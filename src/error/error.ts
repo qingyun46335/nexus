@@ -50,7 +50,7 @@ export class CustomError extends Error {
   }
 }
 
-export const ErrCustomResult = <T>(message: string, value: T): Result<T> => ({
-    v: value,
+export const ErrCustomResult = <T>(message: string): Result<T> => ({
+    v: null as unknown as T,
     e: new CustomError(message)
 });

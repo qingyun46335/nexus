@@ -24,7 +24,11 @@ export default class Server {
     }
 
     start() {
-        this.router.start()
+        const { e: startError } = this.router.start()
+        console.log("Server started")
+        if (startError) {
+            console.error("Failed to start server:", startError)
+        }
     }
 
     server(): {router: Router} {
