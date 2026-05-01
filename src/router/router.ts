@@ -7,6 +7,7 @@ import { createMiddleware } from 'hono/factory'
 /**
  * 请求处理函数类型
  * @param c - Hono框架的Context对象，包含请求和响应信息
+ * @param next - 下一个中间件的执行函数
  * @returns 返回Response或Promise<Response>
  */
 type HandlerFn = (c: Context<BlankEnv, "/", BlankInput>, next: Next) => Response | Promise<Response>
@@ -21,14 +22,13 @@ type RouterFn = () => Result<Hono<BlankEnv, BlankSchema, "/">>
  * 中间件函数类型
  * @param c - Hono框架的Context对象
  * @param next - 下一个中间件的执行函数
- * @returns Promise<void>
+ * @returns Promise<void> | Promise<Response>
  */
 type MiddlewareFn = (c: Context<any, any, any>, next: Next) => Promise<void | Response>
 
 /**
  * 中间件生命周期阶段枚举
- * 按照执行顺序排列：Init → Auth → Business → Response
- * 感觉写大了，先只设定一个默认的生命周期阶段，后续根据需求再细分
+ * 当前仅定义 Default 阶段，未来可根据需求扩展为 Init → Auth → Business → Response 的完整生命周期
  */
 export enum MiddlewarePhase {
     // Init = "init",        // 初始化阶段 - 用于全局初始化操作
@@ -43,26 +43,36 @@ export enum MiddlewarePhase {
  * 用于定义中间件的基本配置信息（输入配置）
  */
 export type MiddlewareConfig = {
-    t: Object              // 避免超集类型导致的类型推断问题，实际使用时可替换为具体类型
-    name: string          // 中间件名称
-    fn: MiddlewareFn         // 中间件处理函数
+    t: Object              // 类型标记，用于避免超集类型导致的类型推断问题，实际使用时可替换为具体类型
+    name: string          // 中间件名称（唯一标识）
+    fn: MiddlewareFn      // 中间件处理函数
     phase: MiddlewarePhase // 所属生命周期阶段
-    order: number         // 同阶段内的执行顺序
+    order: number         // 同阶段内的执行顺序，数值越小越先执行
     before: string[]      // 依赖于哪些中间件之前执行
     after: string[]       // 依赖于哪些中间件之后执行
 }
 
+/**
+ * 中间件描述符类型
+ * 对中间件配置进行标准化处理后的类型，包含依赖关系的哈希值
+ */
 type MiddlewareDescriptor = {
     name: string          // 中间件名称
-    fn: MiddlewareFn         // 中间件处理函数
+    fn: MiddlewareFn      // 中间件处理函数
     phase: MiddlewarePhase // 所属生命周期阶段
     order: number         // 同阶段内的执行顺序
     before: string[]      // 依赖于哪些中间件之前执行
     after: string[]       // 依赖于哪些中间件之后执行
-    beforeHash: number    // before所有依赖的无排序哈希值
-    afterHash: number     // after所有依赖的无排序哈希值
+    beforeHash: number    // before所有依赖的无排序哈希值，用于快速判断依赖是否相同
+    afterHash: number     // after所有依赖的无排序哈希值，用于快速判断依赖是否相同
 }
 
+/**
+ * 标准化中间件描述符数组
+ * 为每个描述符计算 beforeHash 和 afterHash
+ * @param middlewareDescriptors - 中间件描述符数组
+ * @returns 标准化后的中间件描述符数组
+ */
 function normalizeMiddleware(middlewareDescriptors: MiddlewareDescriptor[]): MiddlewareDescriptor[] {
     return middlewareDescriptors.map(md => ({
         ...md,
@@ -71,6 +81,12 @@ function normalizeMiddleware(middlewareDescriptors: MiddlewareDescriptor[]): Mid
     }))
 }
 
+/**
+ * 标准化中间件配置数组
+ * 将 MiddlewareConfig 转换为 MiddlewareDescriptor 并计算哈希值
+ * @param middlewareConfigs - 中间件配置数组
+ * @returns 标准化后的中间件描述符数组
+ */
 function normalizeMiddlewareConfig(middlewareConfigs: MiddlewareConfig[]): MiddlewareDescriptor[] {
     return middlewareConfigs.map(md => ({
         ...md,
@@ -82,11 +98,10 @@ function normalizeMiddlewareConfig(middlewareConfigs: MiddlewareConfig[]): Middl
 /**
  * 中间件节点类型
  * 用于中间件排布处理后的节点（处理后的输出）
- * 注：当前结构与MiddlewareConfig相同，未来会根据需求进行细分
  */
 type MiddlewareNode = {
     name: string          // 中间件名称
-    fn: MiddlewareFn         // 中间件处理函数
+    fn: MiddlewareFn      // 中间件处理函数
     phase: MiddlewarePhase // 所属生命周期阶段
     order: number         // 同阶段内的执行顺序
     before: string[]      // 依赖于哪些中间件之前执行
@@ -103,6 +118,12 @@ function middlewareCycleFilter(middlewareConfigs: MiddlewareConfig[], cycle: str
     return middlewareConfigs.filter(m => m.phase.includes(cycle))
 }
 
+/**
+ * 跨生命周期依赖检查
+ * 验证所有中间件的依赖关系是否在同一个生命周期阶段内
+ * @param middlewares - 中间件配置数组
+ * @returns 验证通过返回 Ok(null)，失败返回错误信息
+ */
 function acrossCycleDependencyCheck(middlewares: MiddlewareConfig[]): Result<null> {
     const phaseOrder = [MiddlewarePhase.Default] // 定义生命周期阶段的执行顺序
     const phaseIndex = new Map<MiddlewarePhase, number>()
@@ -112,6 +133,7 @@ function acrossCycleDependencyCheck(middlewares: MiddlewareConfig[]): Result<nul
         const beforePhase = phaseIndex.get(m.phase)
         if (beforePhase === undefined) continue
 
+        // 检查 before 依赖是否在同一阶段
         for (const before of m.before) {
             const m1 = middlewares.find(m => m.name === before)
             if (!m1) continue
@@ -123,6 +145,7 @@ function acrossCycleDependencyCheck(middlewares: MiddlewareConfig[]): Result<nul
             }
         }
 
+        // 检查 after 依赖是否在同一阶段
         for (const after of m.after) {
             const m1 = middlewares.find(m => m.name === after)
             if (!m1) continue
@@ -138,42 +161,52 @@ function acrossCycleDependencyCheck(middlewares: MiddlewareConfig[]): Result<nul
     return Ok(null)
 }
 
-type DependencyGraph = { depend: Map<string, string[]>, degree: Map<string, number>, vertex: string[] }
+/**
+ * 依赖图结构类型
+ * 用于DAG拓扑排序
+ */
+type DependencyGraph = {
+    depend: Map<string, string[]> // 依赖关系映射：key 表示中间件，value 表示依赖它的中间件列表
+    degree: Map<string, number>   // 入度映射：key 表示中间件，value 表示入度数
+    vertex: string[]              // 顶点列表：无依赖的中间件名称数组
+}
 
-// DAG图依赖构建
+/**
+ * 构建依赖图
+ * 根据中间件的 before 和 after 依赖关系构建DAG图
+ * @param middlewares - 标准化后的中间件描述符数组
+ * @returns 构建成功返回依赖图，失败返回错误信息
+ */
 function buildDependencyGraph(middlewares: MiddlewareDescriptor[]): Result<DependencyGraph> {
     const depend = new Map<string, string[]>()
     const degree = new Map<string, number>()
     const vertex: string[] = []
 
+    // 初始化所有中间件节点
     for (const m of middlewares) {
         depend.set(m.name, [])
         degree.set(m.name, 0)
 
+        // 检查自引用
         if (m.before.includes(m.name) || m.after.includes(m.name)) {
             return ErrCustomResult(`中间件 ${m.name} 不能依赖于自己`)
         }
 
+        // 检查重复添加
         const duplicate = vertex.find(v => v === m.name)
         if (duplicate) {
             return ErrCustomResult(`中间件 ${m.name} 重复添加`)
         }
 
+        // 无依赖的中间件作为初始顶点
         if (m.before.length === 0 && m.after.length === 0) {
             vertex.push(m.name)
         }
-
-        // const duplicate = vertex.find(v => v === m.name)
-        // if (duplicate) {
-        //     return ErrCustomResult(`中间件 ${m.name} 重复添加`)
-        // }  //  我实在没想到我是怎么想到把他写这里的？vertex.push(m.name)  可是在他前面，绝了
     }
 
+    // 构建依赖关系
     for (const m of middlewares) {
-
-        
-
-        // 处理before依赖
+        // 处理 before 依赖：A.before = [B] 表示 A 依赖于 B，即 B 应该在 A 之前执行
         for (const before of m.before) {
             if (middlewares.find(m => m.name === before)) {
                 depend.get(before)?.push(m.name)
@@ -183,7 +216,7 @@ function buildDependencyGraph(middlewares: MiddlewareDescriptor[]): Result<Depen
             }
         }
 
-        // 处理after依赖
+        // 处理 after 依赖：A.after = [B] 表示 A 依赖于 B，即 B 应该在 A 之后执行
         for (const after of m.after) {
             if (middlewares.find(m => m.name === after)) {
                 depend.get(m.name)?.push(after)
@@ -197,6 +230,12 @@ function buildDependencyGraph(middlewares: MiddlewareDescriptor[]): Result<Depen
     return Ok({ depend, degree, vertex })
 }
 
+/**
+ * 计算数组的哈希值
+ * 对数组元素排序后进行哈希计算，确保顺序无关性
+ * @param arr - 字符串数组
+ * @returns 哈希值（无符号32位整数）
+ */
 function hashSet(arr: string[]): number {
     return [...arr].sort().reduce((acc, s) => {
         let h = 5381
@@ -205,12 +244,16 @@ function hashSet(arr: string[]): number {
     }, 0) >>> 0
 }
 
-// DAG图拓扑排序
+/**
+ * DAG图拓扑排序
+ * 根据中间件的依赖关系进行排序，支持同层 order 冲突检测
+ * @param middlewares - 中间件配置数组
+ * @returns 排序后的中间件描述符数组，或错误信息
+ */
 function topologicalSort(middlewares: MiddlewareConfig[]): Result<MiddlewareDescriptor[]> {
+    // 标准化并计算哈希值
     const normalizedMiddlewares = normalizeMiddlewareConfig(middlewares)
-    console.log("normalizedMiddlewares", normalizedMiddlewares)
     const { v: graph, e } = buildDependencyGraph(normalizedMiddlewares)
-    console.log("graph", graph)
     if (e) return Err(e, [])
 
     const { depend, degree, vertex } = graph
@@ -218,50 +261,55 @@ function topologicalSort(middlewares: MiddlewareConfig[]): Result<MiddlewareDesc
     const queue: MiddlewareDescriptor[] = []
     const sorted: MiddlewareDescriptor[] = []
 
+    // 初始化队列：先将无依赖的中间件入队
     for (const v of vertex) {
         const m = normalizedMiddlewares.find(m => m.name === v)
         if (m) queue.push(m)
     }
 
+    // 拓扑排序主循环
     while (queue.length > 0) {
+        // 按 order 排序确保同层执行顺序
         queue.sort((a, b) => a.order - b.order)
         const m = queue.shift()!
         sorted.push(m)
 
-        // 同层order冲突记录
+        // 收集同层 order 冲突检测组
         const orderConflictGroup: MiddlewareDescriptor[] = []
 
+        // 处理当前中间件的依赖者
         for (const next of depend.get(m.name) ?? []) {
             degree.set(next, degree.get(next)! - 1)
             if (degree.get(next) === 0) {
-                queue.push(normalizedMiddlewares.find(m => m.name === next)!)
-                orderConflictGroup.push(normalizedMiddlewares.find(m => m.name === next)!)
+                const nextMiddleware = normalizedMiddlewares.find(m => m.name === next)!
+                queue.push(nextMiddleware)
+                orderConflictGroup.push(nextMiddleware)
             }
         }
 
-        // 同层order冲突处理
+        // 同层 order 冲突检测：检查依赖相同但 order 不同的中间件
         if (orderConflictGroup.length > 1) {
             for (const m of orderConflictGroup) {
                 for (const m1 of orderConflictGroup) {
                     if (m !== m1 && m.beforeHash === m1.beforeHash && m.afterHash === m1.afterHash) {
+                        // 依赖相同但 order 不同是正常的
                         if (m.order === m1.order) {
                             return ErrCustomResult(`中间件 ${m.name} 和 ${m1.name} 存在order冲突`)
                         }
-                        continue
                     } else if (m == m1) {
-                        return ErrCustomResult(`中间件 ${m.name}与 ${m1.name} 重复添加`)
+                        return ErrCustomResult(`中间件 ${m.name} 与 ${m1.name} 重复添加`)
                     }
                 }
             }
         }
     }
 
+    // 检查是否存在循环依赖
     if (sorted.length !== middlewares.length) {
         return ErrCustomResult("中间件依赖关系存在循环")
     }
 
     return Ok(sorted)
-
 }
 
 /**
@@ -279,23 +327,20 @@ type CycleTypeFn = Map<MiddlewarePhase, (((cycleMiddlewares: MiddlewareDescripto
  * @returns 返回按阶段分组的中间件节点Map，或错误信息
  */
 function middlewareArrange(middlewareConfigs: MiddlewareConfig[], cycleFns: CycleTypeFn): Result<Map<string, MiddlewareNode[]> | null> {
-
-    console.log(1)
+    // 跨生命周期依赖检查
     const acrossCycleCheck = acrossCycleDependencyCheck(middlewareConfigs)
     if (acrossCycleCheck.e) return Err(acrossCycleCheck.e!, null)
-    console.log(2)
+
     const cycleMap = new Map<string, MiddlewareNode[]>()
 
     // 遍历所有生命周期阶段
     for (const cycle of Object.values(MiddlewarePhase)) {
         // 筛选属于当前阶段的中间件
         const cycleMiddlewares = middlewareCycleFilter(middlewareConfigs, cycle)
-        console.log(3)
 
-        // 预留：通用排布逻辑
+        // 拓扑排序确保正确的执行顺序
         const { v: sortedMiddlewares, e } = topologicalSort(cycleMiddlewares)
         if (e) return Err(e, null)
-        console.log(4)
 
         // 应用该阶段专属的处理函数
         for (const fn of cycleFns.get(cycle) ?? []) {
@@ -304,7 +349,6 @@ function middlewareArrange(middlewareConfigs: MiddlewareConfig[], cycleFns: Cycl
                 if (e) return Err(e, null)
                 cycleMap.set(cycle, nodes)
             }
-            console.log(5)
         }
     }
 
@@ -326,6 +370,10 @@ export class Router {
         this.baseRouter = new BaseRouter("/", fnHono)
     }
 
+    /**
+     * 获取根路由实例
+     * @returns BaseRouter 实例
+     */
     getBaseRouter(): BaseRouter {
         return this.baseRouter
     }
@@ -340,7 +388,6 @@ export class Router {
 
         return Ok(null)
     }
-
 }
 
 /**
@@ -352,9 +399,7 @@ export class BaseRouter {
     private getHono: RouterFn // 创建Hono实例的函数
     private fnMap: Map<string, { methodType: string, fn: HandlerFn }> // 存储路由处理器的映射
     private methodPathMap: Map<string, BaseRouter> // 存储子路由组的映射
-
     private middlewareConfigs: MiddlewareConfig[] // 存储中间件配置的数组
-    // private middlewareMap: Map<string, MiddlewareNode[]> // 存储中间件的映射
 
     /**
      * 构造函数
@@ -366,10 +411,14 @@ export class BaseRouter {
         this.getHono = fn
         this.fnMap = new Map<string, { methodType: string, fn: HandlerFn }>()
         this.methodPathMap = new Map<string, BaseRouter>()
-
         this.middlewareConfigs = []
     }
 
+    /**
+     * 注册中间件
+     * @param config - 中间件配置对象
+     * @returns 成功返回 Ok(null)，失败返回错误信息
+     */
     midd(config: MiddlewareConfig): Result<null> {
         if (!config || !config.name || !config.fn) {
             return ErrValidationResult(null)
@@ -406,7 +455,7 @@ export class BaseRouter {
      * 注册GET请求处理器
      * @param path - 请求路径
      * @param fn - 请求处理函数
-     * @returns 返回Result，成功返回null
+     * @returns 成功返回 Ok(null)，失败返回错误信息
      */
     get(path: string, fn: HandlerFn): Result<null> {
         if (!path) {
@@ -434,10 +483,8 @@ export class BaseRouter {
 
     /**
      * 启动当前路由节点，递归注册所有子路由和处理器
+     * 注册顺序：中间件 -> 子路由组 -> 路由处理器
      * @returns 返回配置完成的Hono实例，或错误信息
-     */
-    /**
-     * 启动当前路由节点，递归注册所有子路由和处理器
      */
     startRouter(): Result<Hono> {
         // 检查是否有任何路由配置
@@ -445,7 +492,7 @@ export class BaseRouter {
             return ErrCustomResult("下级路由及中间件为空")
         }
 
-        // 【关键修复】获取当前节点的唯一 Hono 实例
+        // 获取当前节点的唯一 Hono 实例
         const { v: hono, e } = this.getHono()
         if (e) {
             return Err(e, new Hono())
@@ -481,31 +528,43 @@ export class BaseRouter {
         return Ok(hono)
     }
 
+    /**
+     * 启动中间件系统
+     * 对中间件进行排序并注册到Hono实例
+     * @param hono - Hono实例
+     * @returns 成功返回 Ok(null)，失败返回错误信息
+     */
     startMiddleware(hono: Hono): Result<null> {
+        // 定义该阶段的处理函数
         const fn = (cycleMiddlewares: MiddlewareDescriptor[]): Result<MiddlewareNode[]> => {
-            // 【关键修复】返回排列后的中间件，而不是空数组
-            return Ok(cycleMiddlewares) 
+            return Ok(cycleMiddlewares)
         }
-        
+
         const map = new Map<MiddlewarePhase, (((cycleMiddlewares: MiddlewareDescriptor[]) => Result<MiddlewareNode[]>) | null)[]>()
         map.set(MiddlewarePhase.Default, [fn])
-        
+
+        // 执行中间件排布
         const { v: middlewareNodes, e: middlewareError } = middlewareArrange(this.middlewareConfigs, map)
         if (middlewareError) return Err(middlewareError, null)
-        console.log("middlewareNodes", middlewareNodes)
-        
+
+        // 注册每个中间件到 Hono 实例
         middlewareNodes?.get(MiddlewarePhase.Default)?.forEach(m => {
-            // 【修改】将统一的 hono 实例传进去
-            this.registerMiddleware(hono, m) 
+            this.registerMiddleware(hono, m)
         })
         return Ok(null)
     }
 
+    /**
+     * 注册单个中间件到Hono实例
+     * @param hono - Hono实例
+     * @param m - 中间件节点
+     * @returns 成功返回 Ok(null)，失败返回错误信息
+     */
     registerMiddleware(hono: Hono, m: MiddlewareNode): Result<null> {
         if (!m || !m.name) {
             return ErrValidationResult(null)
         }
-        // 【关键修复】删除这里的 this.getHono() 调用，使用传入的同一个实例
+        // 使用通配符 '*' 匹配所有路由
         hono.use('*', m.fn as any)
         return Ok(null)
     }
@@ -515,7 +574,7 @@ export class BaseRouter {
      * @param hono - Hono实例
      * @param path - 请求路径
      * @param typeFn - 包含方法类型和处理函数的对象
-     * @returns 返回Result，成功返回null
+     * @returns 成功返回 Ok(null)，失败返回错误信息
      */
     methodTypeRegister(hono: Hono, path: string, typeFn: { methodType: string, fn: HandlerFn }): Result<null> {
         const { methodType: type, fn } = typeFn
@@ -531,5 +590,4 @@ export class BaseRouter {
             return ErrCustomResult(`route 注册失败：${path}`)
         }
     }
-
 }
