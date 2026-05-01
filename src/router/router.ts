@@ -221,10 +221,7 @@ function buildDependencyGraph(
       return ErrCustomResult(`中间件 ${m.name} 重复添加`);
     }
 
-    // 无依赖的中间件作为初始顶点
-    if (m.before.length === 0 && m.after.length === 0) {
-      vertex.push(m.name);
-    }
+
   }
 
   // 构建依赖关系
@@ -232,6 +229,7 @@ function buildDependencyGraph(
     // 处理 before 依赖：A.before = [B] 表示 A 依赖于 B，即 B 应该在 A 之前执行
     for (const before of m.before) {
       if (middlewares.find((m) => m.name === before)) {
+        console.log(`处理中间件 ${m.name} 的 before 依赖 ${before}`);
         depend.get(before)?.push(m.name);
         degree.set(m.name, degree.get(m.name)! + 1);
       } else {
@@ -247,6 +245,13 @@ function buildDependencyGraph(
       } else {
         return ErrCustomResult(`中间件 ${after} 不存在`);
       }
+    }
+  }
+
+  // 根据入度统计无依赖的顶点
+  for (const [k, v] of degree.entries()) {
+    if (v === 0) {
+      vertex.push(k);
     }
   }
 
@@ -284,6 +289,9 @@ function topologicalSort(
   if (e) return Err(e, []);
 
   const { depend, degree, vertex } = graph;
+  console.log("依赖关系图:", depend);
+  console.log("入度映射:", degree);
+  console.log("顶点列表:", vertex);
 
   const queue: MiddlewareDescriptor[] = [];
   const sorted: MiddlewareDescriptor[] = [];
@@ -594,8 +602,8 @@ export class BaseRouter {
       MiddlewarePhase,
       (
         | ((
-            cycleMiddlewares: MiddlewareDescriptor[],
-          ) => Result<MiddlewareNode[]>)
+          cycleMiddlewares: MiddlewareDescriptor[],
+        ) => Result<MiddlewareNode[]>)
         | null
       )[]
     >();
