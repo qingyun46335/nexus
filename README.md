@@ -14,6 +14,7 @@ Nexus 是一个面向边缘运行环境设计的轻量级服务框架，基于 [
 - **运行时**: Cloudflare Workers
 - **框架**: Hono
 - **语言**: TypeScript
+- **代码质量**: ESLint + Prettier
 
 ## 快速开始
 
@@ -44,6 +45,8 @@ nexus
 │   ├── utils/           # 工具函数
 │   ├── error/           # 错误处理
 │   └── index.ts         # 应用入口
+├── eslint.config.js     # ESLint 配置
+├── prettierrc           # Prettier 配置
 ├── package.json
 └── wrangler.toml        # Cloudflare Workers 配置
 ```
