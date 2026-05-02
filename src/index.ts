@@ -2,6 +2,7 @@ import Server from "./server/server";
 import { Context, Next } from "hono";
 import { BlankEnv, Input } from "hono/types";
 import { MiddlewarePhase } from "./router/router";
+import { basicAuth } from 'hono/basic-auth'
 
 function main(): Server {
   const server = new Server();
@@ -49,6 +50,19 @@ function main(): Server {
     after: [],
   });
 
+  admin?.midd({
+    t: 2,
+    name: "adminBasicAuth",
+    fn: basicAuth({
+      username: 'admin',
+      password: 'password',
+    }),
+    phase: MiddlewarePhase.Default,
+    order: 2,
+    before: ["adminMiddleware", "adminMiddleware2"],
+    after: [],
+  });
+
   admin!.get("/test", (c) => {
     return c.text("hello world");
   });
@@ -85,7 +99,7 @@ if (!e) {
   console.log("hono獲取失敗");
 }
 
-hono.use(async (c: Context<BlankEnv, "*", Input>, next: Next) => {
+hono!.use(async (c: Context<BlankEnv, "*", Input>, next: Next) => {
   console.log("Middleware 1");
   await next();
 });

@@ -4,15 +4,17 @@ import { BlankEnv, BlankSchema } from 'hono/types'
 import { Result } from '../utils/result'
 
 export default class Server {
-    private hono: Hono<BlankEnv, BlankSchema, "/"> | null = null
 
+
+
+    private hono: Hono<BlankEnv, BlankSchema, "/"> | null = null
     private router: Router
 
     getHono(): Result<Hono<BlankEnv, BlankSchema, "/">> {
         if (this.hono == null) {
             this.hono = new Hono()
         }
-        return {v: this.hono, e: null}
+        return { v: this.hono, e: null }
     }
 
     constructor() {
@@ -20,19 +22,18 @@ export default class Server {
     }
 
     init() {
-        
+
     }
 
     start() {
         const { e: startError } = this.router.start()
-        console.log("Server started")
         if (startError) {
             console.error("Failed to start server:", startError)
         }
     }
 
-    server(): {router: Router} {
-        return {router: this.router}
+    server(): { router: Router } {
+        return { router: this.router }
     }
 
 
