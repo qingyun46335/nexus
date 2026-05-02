@@ -123,7 +123,6 @@ describe("Router Middleware (midd)", () => {
     const { e } = bR.startRouter();
     await hono.request("/test");
     expect(e).toBeNull();
-    console.log("执行顺序:", executionOrder);
 
     // 拓扑排序应纠正为：A -> B -> C
     expect(executionOrder).toEqual(["A", "B", "C"]);
