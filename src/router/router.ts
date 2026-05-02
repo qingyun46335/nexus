@@ -1,11 +1,7 @@
 import { Context, Hono } from "hono";
 import { BlankEnv, BlankInput, BlankSchema, Next } from "hono/types";
-import { Err, Ok, Result } from "../utils/result";
-import {
-  ErrConTentRepeatResult,
-  ErrCustomResult,
-  ErrValidationResult,
-} from "../error/error";
+import { Err, ErrFrom, Ok, Result } from "../utils/result";
+import { ContentRepeatError, CustomError, ValidationError } from "../error/error";
 
 /**
  * 请求处理函数类型
@@ -158,7 +154,7 @@ function acrossCycleDependencyCheck(
       if (beforePhase === undefined) continue;
 
       if (beforePhase != beforePhase) {
-        return ErrCustomResult(
+        return ErrFrom(CustomError,
           `中间件 ${m.name} 依赖于 ${before} 的生命周期阶段不正确`,
         );
       }
@@ -172,7 +168,7 @@ function acrossCycleDependencyCheck(
       if (afterPhase === undefined) continue;
 
       if (afterPhase != beforePhase) {
-        return ErrCustomResult(
+        return ErrFrom(CustomError,
           `中间件 ${m.name} 依赖于 ${after} 的生命周期阶段不正确`,
         );
       }
@@ -212,13 +208,13 @@ function buildDependencyGraph(
 
     // 检查自引用
     if (m.before.includes(m.name) || m.after.includes(m.name)) {
-      return ErrCustomResult(`中间件 ${m.name} 不能依赖于自己`);
+      return ErrFrom(CustomError, `中间件 ${m.name} 不能依赖于自己`);
     }
 
     // 检查重复添加
     const duplicate = vertex.find((v) => v === m.name);
     if (duplicate) {
-      return ErrCustomResult(`中间件 ${m.name} 重复添加`);
+      return ErrFrom(CustomError, `中间件 ${m.name} 重复添加`);
     }
 
 
@@ -229,11 +225,10 @@ function buildDependencyGraph(
     // 处理 before 依赖：A.before = [B] 表示 A 依赖于 B，即 B 应该在 A 之前执行
     for (const before of m.before) {
       if (middlewares.find((m) => m.name === before)) {
-        console.log(`处理中间件 ${m.name} 的 before 依赖 ${before}`);
         depend.get(before)?.push(m.name);
         degree.set(m.name, degree.get(m.name)! + 1);
       } else {
-        return ErrCustomResult(`中间件 ${before} 不存在`);
+        return ErrFrom(CustomError, `中间件 ${before} 不存在`);
       }
     }
 
@@ -243,7 +238,7 @@ function buildDependencyGraph(
         depend.get(m.name)?.push(after);
         degree.set(after, degree.get(after)! + 1);
       } else {
-        return ErrCustomResult(`中间件 ${after} 不存在`);
+        return ErrFrom(CustomError, `中间件 ${after} 不存在`);
       }
     }
   }
@@ -286,12 +281,9 @@ function topologicalSort(
   // 标准化并计算哈希值
   const normalizedMiddlewares = normalizeMiddlewareConfig(middlewares);
   const { v: graph, e } = buildDependencyGraph(normalizedMiddlewares);
-  if (e) return Err(e, []);
+  if (e) return Err(e);
 
   const { depend, degree, vertex } = graph;
-  console.log("依赖关系图:", depend);
-  console.log("入度映射:", degree);
-  console.log("顶点列表:", vertex);
 
   const queue: MiddlewareDescriptor[] = [];
   const sorted: MiddlewareDescriptor[] = [];
@@ -335,12 +327,12 @@ function topologicalSort(
           ) {
             // 依赖相同但 order 不同是正常的
             if (m.order === m1.order) {
-              return ErrCustomResult(
+              return ErrFrom(CustomError,
                 `中间件 ${m.name} 和 ${m1.name} 存在order冲突`,
               );
             }
           } else if (m == m1) {
-            return ErrCustomResult(`中间件 ${m.name} 与 ${m1.name} 重复添加`);
+            return ErrFrom(CustomError, `中间件 ${m.name} 与 ${m1.name} 重复添加`);
           }
         }
       }
@@ -349,7 +341,7 @@ function topologicalSort(
 
   // 检查是否存在循环依赖
   if (sorted.length !== middlewares.length) {
-    return ErrCustomResult("中间件依赖关系存在循环");
+    return ErrFrom(CustomError, "中间件依赖关系存在循环");
   }
 
   return Ok(sorted);
@@ -381,7 +373,7 @@ function middlewareArrange(
 ): Result<Map<string, MiddlewareNode[]> | null> {
   // 跨生命周期依赖检查
   const acrossCycleCheck = acrossCycleDependencyCheck(middlewareConfigs);
-  if (acrossCycleCheck.e) return Err(acrossCycleCheck.e!, null);
+  if (acrossCycleCheck.e) return Err(acrossCycleCheck.e!);
 
   const cycleMap = new Map<string, MiddlewareNode[]>();
 
@@ -392,13 +384,13 @@ function middlewareArrange(
 
     // 拓扑排序确保正确的执行顺序
     const { v: sortedMiddlewares, e } = topologicalSort(cycleMiddlewares);
-    if (e) return Err(e, null);
+    if (e) return Err(e);
 
     // 应用该阶段专属的处理函数
     for (const fn of cycleFns.get(cycle) ?? []) {
       if (fn) {
         const { v: nodes, e } = fn(sortedMiddlewares);
-        if (e) return Err(e, null);
+        if (e) return Err(e);
         cycleMap.set(cycle, nodes);
       }
     }
@@ -436,7 +428,7 @@ export class Router {
    */
   start(): Result<null> {
     const { e: baseE } = this.baseRouter.startRouter();
-    if (baseE) return Err(baseE, null);
+    if (baseE) return Err(baseE);
 
     return Ok(null);
   }
@@ -473,10 +465,10 @@ export class BaseRouter {
    */
   midd(config: MiddlewareConfig): Result<null> {
     if (!config || !config.name || !config.fn) {
-      return ErrValidationResult(null);
+      return ErrFrom(ValidationError, "中间件配置不合法");
     }
     if (this.middlewareConfigs.find((m) => m.name === config.name)) {
-      return ErrCustomResult(`中间件 ${config.name} 重复添加`);
+      return ErrFrom(CustomError, `中间件 ${config.name} 重复添加`);
     }
     this.middlewareConfigs.push(config);
     return Ok(null);
@@ -489,7 +481,7 @@ export class BaseRouter {
    */
   group(groupName: string): Result<BaseRouter | null> {
     if (!groupName) {
-      return ErrValidationResult(null);
+      return ErrFrom(ValidationError, "路由组名称不能为空");
     }
     // 如果已存在同名路由组，直接返回
     if (this.methodPathMap.has(groupName)) {
@@ -511,12 +503,12 @@ export class BaseRouter {
    */
   get(path: string, fn: HandlerFn): Result<null> {
     if (!path) {
-      return ErrValidationResult(null);
+      return ErrFrom(ValidationError, "路径不能为空");
     }
 
     // 检查路径是否已被注册
     if (this.fnMap.has(path)) {
-      return ErrConTentRepeatResult(null);
+      return ErrFrom(ContentRepeatError, "路径已被注册");
     }
     this.fnMap.set(path, { methodType: "get", fn: fn });
 
@@ -530,7 +522,7 @@ export class BaseRouter {
    * @returns 返回错误信息，表示暂不支持
    */
   // post(path: string, fn: HandlerFn): Result<null> {
-  //   return ErrCustomResult("暂不支持post方法");
+  //   return ErrFrom(CustomError,"暂不支持post方法");
   // }
 
   /**
@@ -545,30 +537,30 @@ export class BaseRouter {
       this.methodPathMap.size == 0 &&
       this.middlewareConfigs.length == 0
     ) {
-      return ErrCustomResult("下级路由及中间件为空");
+      return ErrFrom(CustomError, "下级路由及中间件为空");
     }
 
     // 获取当前节点的唯一 Hono 实例
     const { v: hono, e } = this.getHono();
     if (e) {
-      return Err(e, new Hono());
+      return Err(e);
     }
 
     // 【时序修复 1】必须先注册中间件！
     const { e: middlewareE } = this.startMiddleware(hono);
     if (middlewareE) {
-      return Err(middlewareE, new Hono());
+      return Err(middlewareE);
     }
 
     // 【时序修复 2】再注册所有子路由组
     if (this.methodPathMap.size != 0) {
       for (const [k, v] of this.methodPathMap.entries()) {
         const { v: h, e } = v.startRouter();
-        if (e) return Err(e, new Hono());
+        if (e) return Err(e);
         try {
           hono.route(k, h);
         } catch (e) {
-          return ErrCustomResult(`route 注册错误：${k}，错误信息：${e}`);
+          return ErrFrom(CustomError, `route 注册错误：${k}，错误信息：${e}`);
         }
       }
     }
@@ -577,7 +569,7 @@ export class BaseRouter {
     if (this.fnMap.size != 0) {
       for (const [k, v] of this.fnMap.entries()) {
         const { e } = this.methodTypeRegister(hono, k, v);
-        if (e) return Err(e, new Hono());
+        if (e) return Err(e);
       }
     }
 
@@ -614,7 +606,7 @@ export class BaseRouter {
       this.middlewareConfigs,
       map,
     );
-    if (middlewareError) return Err(middlewareError, null);
+    if (middlewareError) return Err(middlewareError);
 
     // 注册每个中间件到 Hono 实例
     middlewareNodes?.get(MiddlewarePhase.Default)?.forEach((m) => {
@@ -631,7 +623,7 @@ export class BaseRouter {
    */
   registerMiddleware(hono: Hono, m: MiddlewareNode): Result<null> {
     if (!m || !m.name) {
-      return ErrValidationResult(null);
+      return ErrFrom(ValidationError, "中间件配置不合法");
     }
     // 使用通配符 '*' 匹配所有路由
     hono.use("*", m.fn);
@@ -657,10 +649,10 @@ export class BaseRouter {
           hono.get(path, fn);
           return Ok(null);
         default:
-          return ErrCustomResult(`route 注册失败：${path}`);
+          return ErrFrom(CustomError, `route 注册失败：${path}`);
       }
     } catch (e) {
-      return ErrCustomResult(`route 注册失败：${path}，错误信息：${e}`);
+      return ErrFrom(CustomError, `route 注册失败：${path}，错误信息：${e}`);
     }
   }
 }
