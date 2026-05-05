@@ -1,39 +1,30 @@
 import { Hono } from 'hono'
-import { Router } from './../router/router'
-import { BlankEnv, BlankSchema } from 'hono/types'
+import { Route, RouteEnv } from '../router/route'
 import { Result } from '../utils/result'
 
 export default class Server {
 
-
-
-    private hono: Hono<BlankEnv, BlankSchema, "/"> | null = null
-    private router: Router
-
-    getHono(): Result<Hono<BlankEnv, BlankSchema, "/">> {
-        if (this.hono == null) {
-            this.hono = new Hono()
-        }
-        return { v: this.hono, e: null }
-    }
+    private hono: Hono<RouteEnv> | null = null
+    private route: Route
 
     constructor() {
-        this.router = new Router(() => this.getHono())
+        this.route = new Route()
     }
 
     init() {
 
     }
 
-    start() {
-        const { e: startError } = this.router.start()
-        if (startError) {
-            console.error("Failed to start server:", startError)
-        }
+    start(): Result<Hono<RouteEnv>> {
+        // const { e: startError } = this.route
+        // if (startError) {
+        //     console.error("Failed to start server:", startError)
+        // }
+        return this.route.route()
     }
 
-    server(): { router: Router } {
-        return { router: this.router }
+    server(): { router: Route } {
+        return { router: this.route }
     }
 
 
