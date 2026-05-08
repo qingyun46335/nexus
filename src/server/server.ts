@@ -1,31 +1,21 @@
-import { Hono } from 'hono'
-import { Route, RouteEnv } from '../router/route'
+import { Env, Hono } from 'hono'
 import { Result } from '../utils/result'
+import { Route } from '../route/route'
 
-export default class Server {
+export default class Server<E extends Env> {
 
-    private hono: Hono<RouteEnv> | null = null
-    private route: Route
+    private route: Route<E>
 
-    constructor() {
-        this.route = new Route()
+    constructor(route: Route<E>) {
+        this.route = route
     }
 
     init() {
 
     }
 
-    start(): Result<Hono<RouteEnv>> {
-        // const { e: startError } = this.route
-        // if (startError) {
-        //     console.error("Failed to start server:", startError)
-        // }
-        return this.route.route()
+    start(): Result<Hono<E>> {
+        return this.route.build()
     }
-
-    server(): { router: Route } {
-        return { router: this.route }
-    }
-
 
 }
