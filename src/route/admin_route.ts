@@ -18,6 +18,7 @@ export class AdminRoute extends Route<VarsAndBindingsEnv<AdminRouteVarsEnv, Admi
         username: c.env.ADMIN_USER as string,
         password: c.env.ADMIN_PASS as string,
       })
+      console.log("pass: ", c.env.ADMIN_PASS)
       return auth(c, next)  // 这里的 c 才是请求上下文
     })
     return Ok(null)
