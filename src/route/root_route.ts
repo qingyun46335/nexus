@@ -5,6 +5,7 @@ import { Route, VarsEnv } from "./route";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import { logger } from "hono/logger";
+import { HTTPException } from "hono/http-exception";
 
 export type RootRouteEnv = Record<string, unknown>
 
@@ -22,6 +23,9 @@ export class RootRoute extends Route<VarsEnv<RootRouteEnv>> {
 
     onError() {
         this.hono.onError((err, c) => {
+            if (err instanceof HTTPException) {
+                return err.getResponse()
+            }
             console.error(err)
             return c.json({ error: "Internal Server Error" }, 500)
         })
