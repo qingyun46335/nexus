@@ -10,7 +10,8 @@
     "test": "vitest"
   },
   "dependencies": {
-    "hono": "^4.12.14"
+    "hono": "^4.12.14",
+    "lit": "^3.3.2"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.2.3",
