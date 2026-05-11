@@ -17,7 +17,9 @@ export class RootRoute extends Route<VarsEnv<RootRouteEnv>> {
         return Ok(null)
     }
     method(app: Hono<VarsEnv<RootRouteEnv>, BlankSchema, "/">): Result<null> {
-        app.use()
+        app.get("/", (c) => {
+            return c.html(index)
+        })
         return Ok(null)
     }
 
@@ -46,3 +48,22 @@ export class RootRoute extends Route<VarsEnv<RootRouteEnv>> {
     }
 
 }
+
+const index = `
+    <html lang="zh">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexus</title>
+</head>
+
+<body>
+    <div id="app">
+        <nexus-homepage></nexus-homepage>
+    </div>
+    <script type="module" src="/src/client/component/nexus-homepage.ts"></script>
+</body>
+
+</html>
+`
