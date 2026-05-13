@@ -5,7 +5,8 @@
     "dev": "wrangler dev",
     "build": "vite build",
     "preview": "$npm_execpath run build && vite preview",
-    "deploy": "npm run build && wrangler deploy",
+    "build:client": "cd src/client && npm run build",
+    "deploy": "npm run build:client && wrangler deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "test": "vitest"
   },

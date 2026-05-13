@@ -50,19 +50,20 @@ export class RootRoute extends Route<VarsEnv<RootRouteEnv>> {
 }
 
 const index = `
-    <html lang="zh">
+<!doctype html>
+<html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nexus</title>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>client</title>
+  <link rel="stylesheet" href="./src/index.css" />
+  <script type="module" src="/src/my-index.ts"></script>
 </head>
 
 <body>
-    <div id="app">
-        <nexus-homepage></nexus-homepage>
-    </div>
-    <script type="module" src="/src/client/component/nexus-homepage.ts"></script>
+  <my-index></my-index>
 </body>
 
 </html>
