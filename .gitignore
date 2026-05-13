@@ -36,5 +36,3 @@ lerna-debug.log*
 
 # Discarded / deprecated code (do not track)
 discard/
-
-wrangler.jsonc
