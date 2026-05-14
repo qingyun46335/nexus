@@ -4,19 +4,25 @@ import { Ok, Result } from "../utils/result";
 import { Route, VarsAndBindingsEnv } from "./route";
 import { basicAuth } from "hono/basic-auth";
 
-export type AdminRouteVarsEnv = Record<string, unknown>
+export type AdminRouteSetEnv = object
+
+export type AdminRouteGetEnv = {
+  requestId: string
+  abc: string
+}
+
 export type AdminRouteBindingsEnv = {
   ADMIN_USER: string
   ADMIN_PASS: string
 }
 
-export class AdminRoute extends Route<VarsAndBindingsEnv<AdminRouteVarsEnv, AdminRouteBindingsEnv>> {
+export class AdminRoute extends Route<VarsAndBindingsEnv<AdminRouteSetEnv, AdminRouteGetEnv, AdminRouteBindingsEnv>, AdminRouteSetEnv, AdminRouteGetEnv> {
 
   setRoutePrefix(): string | null {
     return "/admin"
   }
 
-  midd(app: Hono<VarsAndBindingsEnv<AdminRouteVarsEnv, AdminRouteBindingsEnv>, BlankSchema, "/">): Result<null> {
+  midd(app: Hono<VarsAndBindingsEnv<AdminRouteSetEnv, AdminRouteGetEnv, AdminRouteBindingsEnv>, BlankSchema, "/">): Result<null> {
     app.use("*", async (c, next) => {
       const auth = basicAuth({
         username: c.env.ADMIN_USER as string,
@@ -27,7 +33,7 @@ export class AdminRoute extends Route<VarsAndBindingsEnv<AdminRouteVarsEnv, Admi
     })
     return Ok(null)
   }
-  method(app: Hono<VarsAndBindingsEnv<AdminRouteVarsEnv, AdminRouteBindingsEnv>, BlankSchema, "/">): Result<null> {
+  method(app: Hono<VarsAndBindingsEnv<AdminRouteSetEnv, AdminRouteGetEnv, AdminRouteBindingsEnv>, BlankSchema, "/">): Result<null> {
     app.get("/test", (c) => {
       return c.html(html)
     })

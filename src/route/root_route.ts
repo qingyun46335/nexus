@@ -7,22 +7,28 @@ import { secureHeaders } from "hono/secure-headers";
 import { logger } from "hono/logger";
 import { HTTPException } from "hono/http-exception";
 
-export type RootRouteEnv = Record<string, unknown>
+export type RootRouteSetEnv = {
+    requestId: string
+    abc: string
+}
 
-export class RootRoute extends Route<VarsEnv<RootRouteEnv>> {
+export type RootRouteGetEnv = object
+
+export class RootRoute extends Route<VarsEnv<RootRouteSetEnv, RootRouteGetEnv>, RootRouteSetEnv, RootRouteGetEnv> {
 
     setRoutePrefix(): string | null {
         return "/"
     }
 
-    midd(app: Hono<VarsEnv<RootRouteEnv>, BlankSchema, "/">): Result<null> {
+    midd(app: Hono<VarsEnv<RootRouteSetEnv, RootRouteGetEnv>, BlankSchema, "/">): Result<null> {
         app.use("*", requestId())
         app.use("*", secureHeaders())
         app.use("*", logger())
         return Ok(null)
     }
-    method(app: Hono<VarsEnv<RootRouteEnv>, BlankSchema, "/">): Result<null> {
+    method(app: Hono<VarsEnv<RootRouteSetEnv, RootRouteGetEnv>, BlankSchema, "/">): Result<null> {
         app.get("/", (c) => {
+            console.log("index html")
             return c.html(index)
         })
         return Ok(null)

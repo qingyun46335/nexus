@@ -1,17 +1,20 @@
 import Server from "./server/server";
 import { Hono } from "hono";
-import { RootRouteEnv } from "./route/root_route";
+import { RootRouteGetEnv, RootRouteSetEnv } from "./route/root_route";
 import { RootRoute } from "./route/root_route";
 import { AdminRoute } from "./route/admin_route";
 import { VarsEnv } from "./route/route";
+import { ApiRoute } from "./route/api_route";
+import { TestRoute } from "./route/test_route";
 
-function main(): Hono<VarsEnv<RootRouteEnv>> {
+function main(): Hono<VarsEnv<RootRouteSetEnv, RootRouteGetEnv>> {
 
-  const admin = new AdminRoute()
   const route = new RootRoute()
   route.notFound()
   route.onError()
-  route.setRoute(admin)
+  route.setRoute(new AdminRoute())
+  const api = route.setRoute(new ApiRoute())
+  api.setRoute(new TestRoute())
   const server = new Server(route);
 
   server.init();
