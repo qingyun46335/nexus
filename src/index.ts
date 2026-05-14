@@ -7,8 +7,8 @@ import { VarsEnv } from "./route/route";
 
 function main(): Hono<VarsEnv<RootRouteEnv>> {
 
-  const admin = new AdminRoute("/admin")
-  const route = new RootRoute("/")
+  const admin = new AdminRoute()
+  const route = new RootRoute()
   route.notFound()
   route.onError()
   route.setRoute(admin)

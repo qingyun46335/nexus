@@ -12,6 +12,10 @@ export type AdminRouteBindingsEnv = {
 
 export class AdminRoute extends Route<VarsAndBindingsEnv<AdminRouteVarsEnv, AdminRouteBindingsEnv>> {
 
+  setRoutePrefix(): string | null {
+    return "/admin"
+  }
+
   midd(app: Hono<VarsAndBindingsEnv<AdminRouteVarsEnv, AdminRouteBindingsEnv>, BlankSchema, "/">): Result<null> {
     app.use("*", async (c, next) => {
       const auth = basicAuth({

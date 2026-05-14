@@ -24,10 +24,27 @@ export abstract class Route<E extends Env> {
     private prefix: string
     protected hono: Hono<E>
 
-    constructor(prefix: string) {
-        this.prefix = prefix
+    constructor(prefix?: string) {
+        if (prefix) {
+            this.initPrefixNotNull(prefix)
+        } else {
+            this.initPrefixIsNull()
+        }
         this.hono = new Hono<E>
     }
+
+    initPrefixIsNull() {
+        const pf = this.setRoutePrefix()
+        if (pf) {
+            this.prefix = pf
+        }
+    }
+
+    initPrefixNotNull(prefix: string) {
+        this.prefix = prefix
+    }
+
+    abstract setRoutePrefix(): string | null
 
     private groupRouteFn: GroupRouteFn<E> = () => Ok(null)
 

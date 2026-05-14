@@ -10,6 +10,11 @@ import { HTTPException } from "hono/http-exception";
 export type RootRouteEnv = Record<string, unknown>
 
 export class RootRoute extends Route<VarsEnv<RootRouteEnv>> {
+
+    setRoutePrefix(): string | null {
+        return "/"
+    }
+
     midd(app: Hono<VarsEnv<RootRouteEnv>, BlankSchema, "/">): Result<null> {
         app.use("*", requestId())
         app.use("*", secureHeaders())
