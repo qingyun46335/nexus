@@ -36,7 +36,20 @@ export abstract class Route<E extends Env, S, G> {
     private _g: G
 
     private prefix: string
+    private fullPath: string
     protected hono: Hono<E>
+
+    getPrefix(): string {
+        return this.prefix
+    }
+
+    setFullPath(str: string) {
+        this.fullPath = str
+    }
+
+    getFullPath(): string {
+        return this.fullPath
+    }
 
     constructor(prefix?: string) {
         if (prefix) {
@@ -91,10 +104,11 @@ export abstract class Route<E extends Env, S, G> {
             ),
     ): Route<E0, S & S0, G0> {
         this.groupRouteFn.push((app) => {
+            r.setFullPath(`${this.fullPath != "/" ? (this.fullPath ?? "") : ""}${r.getPrefix()}`)
             const { v: val, e } = r.build();
             if (e) return Err(e);
-            app.route(r.prefix, val);
-            return Ok(r.prefix);
+            app.route(r.getPrefix(), val);
+            return Ok(r.getFullPath());
         });
         // 类型断言：r 实际还是那个对象，但对外类型升级为 Set 合并版
         return r as unknown as Route<E0, S & S0, G0>;
@@ -108,7 +122,7 @@ export abstract class Route<E extends Env, S, G> {
                 return Err(e)
             }
             if (v) {
-                console.log(`${v} 挂载完成`)
+                console.log(`${v}  路径挂载已完成`)
             }
             console.log("fn: ", fn)
         }
@@ -129,6 +143,6 @@ export abstract class Route<E extends Env, S, G> {
         if (res.e) {
             return Err(res.e)
         }
-        return OkMsg(`${this.prefix} 路由创建成功`, this.hono)
+        return OkMsg(`${this.fullPath} 路由创建成功`, this.hono)
     }
 }
