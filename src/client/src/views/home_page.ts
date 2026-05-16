@@ -1,6 +1,7 @@
 import { html, css } from 'lit';
 import { DaisyUIElement } from '../components/daisy-ui-element'; // 路径按你的项目调整
 import { customElement } from 'lit/decorators.js';
+import axiosi from '../utils/axios';
 
 @customElement("home-page")
 export class HomePage extends DaisyUIElement {
@@ -81,9 +82,25 @@ export class HomePage extends DaisyUIElement {
     `;
   }
 
-  _handleExplore() {
+  async _handleExplore() {
     // 自定义跳转逻辑，例如：
-    window.location.href = '/admin/test';
-    console.log('nexus 探索启动');
+
+    await this.testAxios()
+    window.location.href = `/pages/login`;
   }
+
+  async testAxios() {
+    await axiosi.get("/testAxios").then(res => {
+      if (res.status === 200) {
+        console.log("/api/testAxios: ", res.data)
+      }
+    })
+
+    await axiosi.get("/test/test").then(res => {
+      if (res.status === 200) {
+        console.log("/api/test/test: ", res.data)
+      }
+    })
+  }
+
 }
