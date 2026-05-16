@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { BlankSchema } from "hono/types";
 import { Ok, Result } from "../utils/result";
 import { Route, VarsAndBindingsEnv } from "./route";
-import { basicAuth } from "hono/basic-auth";
+import { jwt, sign } from 'hono/jwt'
+// import { basicAuth } from "hono/basic-auth";
 
 export type AdminRouteSetEnv = object
 
@@ -14,6 +15,7 @@ export type AdminRouteGetEnv = {
 export type AdminRouteBindingsEnv = {
   ADMIN_USER: string
   ADMIN_PASS: string
+  JWT_SECRET: string
 }
 
 export class AdminRoute extends Route<VarsAndBindingsEnv<AdminRouteSetEnv, AdminRouteGetEnv, AdminRouteBindingsEnv>, AdminRouteSetEnv, AdminRouteGetEnv> {
@@ -22,20 +24,40 @@ export class AdminRoute extends Route<VarsAndBindingsEnv<AdminRouteSetEnv, Admin
     return "/admin"
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   midd(app: Hono<VarsAndBindingsEnv<AdminRouteSetEnv, AdminRouteGetEnv, AdminRouteBindingsEnv>, BlankSchema, "/">): Result<null> {
-    app.use("*", async (c, next) => {
-      const auth = basicAuth({
-        username: c.env.ADMIN_USER as string,
-        password: c.env.ADMIN_PASS as string,
-      })
-      console.log("pass: ", c.env.ADMIN_PASS)
-      return auth(c, next)  // 这里的 c 才是请求上下文
+    app.use('*', async (c, next) => {
+      if (`${this.getFullPath()}/login` === c.req.path) {
+        await next()
+      } else {
+        // 从环境变量或安全的地方获取密钥
+        const jwtMiddleware = jwt({
+          secret: c.env.JWT_SECRET,
+          alg: 'HS256'
+        })
+        return jwtMiddleware(c, next)
+      }
+
     })
     return Ok(null)
   }
   method(app: Hono<VarsAndBindingsEnv<AdminRouteSetEnv, AdminRouteGetEnv, AdminRouteBindingsEnv>, BlankSchema, "/">): Result<null> {
     app.get("/test", (c) => {
       return c.html(html)
+    })
+    app.post("/login", async (c) => {
+      const body = await c.req.parseBody();
+      const username = body.username;
+      const password = body.password;
+      console.log("admin_pass: ", c.env.ADMIN_PASS as string)
+      if (password === c.env.ADMIN_PASS as string) {
+
+        const payload = { sub: username, role: 'user', exp: Math.floor(Date.now() / 1000) + 60 * 60 }
+        const token = await sign(payload, c.env.JWT_SECRET, 'HS256')
+
+        return c.json({ token })
+      }
+      return c.text("账户或密码错误", 401)
     })
     return Ok(null)
   }

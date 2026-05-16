@@ -21,7 +21,7 @@ export class TestRoute extends Route<VarsEnv<TestRouteSetEnv, TestRouteGetEnv>, 
     }
     method(app: Hono<VarsEnv<object, TestRouteGetEnv>, BlankSchema, "/">): Result<null> {
         app.get("/test", (c) => {
-            return c.text("/test/test  请求完成")
+            return c.text("/test/test  请求完成", 200)
         })
         return Ok(null)
     }

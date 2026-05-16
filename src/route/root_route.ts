@@ -28,8 +28,9 @@ export class RootRoute extends Route<VarsEnv<RootRouteSetEnv, RootRouteGetEnv>, 
     }
     method(app: Hono<VarsEnv<RootRouteSetEnv, RootRouteGetEnv>, BlankSchema, "/">): Result<null> {
         app.get("/", (c) => {
-            console.log("index html")
-            return c.html(index)
+            // console.log("index html")
+            // return c.html(index)
+            return c.newResponse(null)
         })
         return Ok(null)
     }
@@ -59,23 +60,3 @@ export class RootRoute extends Route<VarsEnv<RootRouteSetEnv, RootRouteGetEnv>, 
     }
 
 }
-
-const index = `
-<!doctype html>
-<html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>client</title>
-  <link rel="stylesheet" href="./src/index.css" />
-  <script type="module" src="/src/my-index.ts"></script>
-</head>
-
-<body>
-  <my-index></my-index>
-</body>
-
-</html>
-`

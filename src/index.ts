@@ -12,9 +12,9 @@ function main(): Hono<VarsEnv<RootRouteSetEnv, RootRouteGetEnv>> {
   const route = new RootRoute()
   route.notFound()
   route.onError()
-  route.setRoute(new AdminRoute())
   const api = route.setRoute(new ApiRoute())
   api.setRoute(new TestRoute())
+  api.setRoute(new AdminRoute())
   const server = new Server(route);
 
   server.init();
