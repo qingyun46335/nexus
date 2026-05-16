@@ -6,4 +6,7 @@
   "vars": {
     "ADMIN_USER": "admin",
   },
+  "assets": {
+    "directory": "./dist/client/",
+  },
 }

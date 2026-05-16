@@ -3,6 +3,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "dev:client": "cd src/client && npm run dev",
     "build": "vite build",
     "preview": "$npm_execpath run build && vite preview",
     "build:client": "cd src/client && npm run build",
