@@ -49,7 +49,6 @@ export class AdminRoute extends Route<VarsAndBindingsEnv<AdminRouteSetEnv, Admin
       const body = await c.req.parseBody();
       const username = body.username;
       const password = body.password;
-      console.log("admin_pass: ", c.env.ADMIN_PASS as string)
       if (password === c.env.ADMIN_PASS as string) {
 
         const payload = { sub: username, role: 'user', exp: Math.floor(Date.now() / 1000) + 60 * 60 }

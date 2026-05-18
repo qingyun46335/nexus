@@ -66,12 +66,14 @@ export class LoginPage extends DaisyUIElement {
           location.href = "/pages/admin"
         } else {
           this.showToast('用户名或密码错误', 'error');
+          console.log("登陆失败了：", res.status)
         }
       });
       // 登录成功后可在这里执行跳转/派发事件等逻辑
       // this.dispatchEvent(new CustomEvent('login-success', { detail: data }));
     } catch (err) {
       this.showToast('登录失败，请稍后重试', 'error');
+      console.log("登陆失败了")
       console.error('登录异常：', err);
     } finally {
       this.isLoading = false;

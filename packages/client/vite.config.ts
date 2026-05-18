@@ -19,14 +19,28 @@ export default defineConfig({
     },
     // 部署模式：打包输出到 根目录dist/nexus/client（完美匹配你的旧结构）
     build: {
-        outDir: '../../dist/client',
+        outDir: '../../packages/server/dist/client',
         emptyOutDir: true, // 自动清空旧打包文件
         rollupOptions: {
             input: {
                 main: "index.html",
-                login: "/pages/login.html",
-                admin: "/pages/admin.html",
+                login: "./pages/login.html",
+                admin: "./pages/admin.html",
             }
         }
-    }
+    },
+    esbuild: {
+        target: 'es2021',
+        // 启用旧版实验性装饰器支持
+        supported: {
+            'decorators': true,
+        },
+        // 禁用 esbuild 的新标准装饰器自动检测
+        tsconfigRaw: {
+            compilerOptions: {
+                experimentalDecorators: true,
+                useDefineForClassFields: false,
+            },
+        },
+    },
 });

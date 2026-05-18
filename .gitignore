@@ -36,3 +36,8 @@ lerna-debug.log*
 
 # Discarded / deprecated code (do not track)
 discard/
+
+.dev.vars*
+.dev.vars
+.dev.vars.local
+.dev.vars.production

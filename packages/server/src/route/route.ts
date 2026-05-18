@@ -31,12 +31,12 @@ type CheckGetCovered<G, S> =
 
 export type GroupRouteFn<E extends Env> = (app: Hono<E>) => Result<null> | Result<string>
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export abstract class Route<E extends Env, S, G> {
 
-    private _g: G
 
-    private prefix: string
-    private fullPath: string
+    private prefix: string = ""
+    private fullPath: string = ""
     protected hono: Hono<E>
 
     getPrefix(): string {
