@@ -1,9 +1,9 @@
 import { html, css } from "lit";
 import { customElement } from "lit/decorators.js";
-import { DaisyUIElement } from "../components/daisy-ui-element";
+import { DaisyUIElement } from "./daisy-ui-element";
 
-@customElement("unauthorized-element")
-export class UnauthorizedElement extends DaisyUIElement {
+@customElement("error-element")
+export class ErrorElement extends DaisyUIElement {
 
     static defaultStyles = css`
         :host {
@@ -29,11 +29,11 @@ export class UnauthorizedElement extends DaisyUIElement {
             width: 64px;
             height: 64px;
             border-radius: 16px;
-            background-color: oklch(var(--er) / 0.08);
+            background-color: oklch(var(--wa) / 0.08);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: oklch(var(--er));
+            color: oklch(var(--wa));
         }
 
         .icon-wrap svg {
@@ -51,7 +51,7 @@ export class UnauthorizedElement extends DaisyUIElement {
             font-weight: 600;
             letter-spacing: 0.1em;
             text-transform: uppercase;
-            color: oklch(var(--er));
+            color: oklch(var(--wa));
             opacity: 0.7;
         }
 
@@ -120,13 +120,6 @@ export class UnauthorizedElement extends DaisyUIElement {
             border-color: oklch(var(--bc) / 0.3);
             color: oklch(var(--bc) / 0.85);
         }
-
-        /* Dark mode */
-        @media (prefers-color-scheme: dark) {
-            .icon-wrap {
-                background-color: oklch(var(--er) / 0.12);
-            }
-        }
     `;
 
     render() {
@@ -134,15 +127,22 @@ export class UnauthorizedElement extends DaisyUIElement {
             <div class="container">
                 <div class="icon-wrap">
                     <svg viewBox="0 0 24 24">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
                     </svg>
                 </div>
-                <span class="code">401 Unauthorized</span>
-                <h1 class="title">需要登录才能访问</h1>
-                <p class="desc">您当前未登录，或登录已过期。请重新登录后继续。</p>
+                <span class="code">出了点问题</span>
+                <h1 class="title">页面加载失败</h1>
+                <p class="desc">服务暂时无法响应，请稍后重试。如果问题持续存在，请联系管理员。</p>
                 <div class="actions">
-                    <a class="btn-primary" href="/pages/login">前往登录</a>
+                    <button class="btn-primary" @click=${() => window.location.reload()}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                        重新加载
+                    </button>
                     <a class="btn-ghost" href="/">返回首页</a>
                 </div>
             </div>

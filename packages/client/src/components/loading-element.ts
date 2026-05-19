@@ -1,6 +1,6 @@
 import { html, css } from "lit";
 import { customElement } from "lit/decorators.js";
-import { DaisyUIElement } from "../components/daisy-ui-element";
+import { DaisyUIElement } from "./daisy-ui-element";
 
 @customElement("loading-element")
 export class LoadingElement extends DaisyUIElement {

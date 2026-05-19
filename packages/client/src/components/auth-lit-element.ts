@@ -1,11 +1,6 @@
 import { state } from "lit/decorators.js";
-import { DaisyUIElement } from "./daisy-ui-element";
-import { html } from "lit";
 import axiosi from "../utils/axios";
-
-import '../views/error-element'
-import '../views/loading-element'
-import '../views/unauthorized-element'
+import { ErrorLitElement } from "./error-lit-element";
 
 /**
  * AuthLitElement —— 需要身份验证的页面/组件的抽象基类
@@ -47,28 +42,15 @@ import '../views/unauthorized-element'
  *   - 受保护内容不会出现在初始 HTML 中，依赖 JS 执行后才渲染。
  */
 
-type AuthStatus = 'loading' | 'ok' | `unauth` | 'error';
+type AuthStatus = 'loading' | 'ok' | `unauth` | 'forbidden' | 'error';
 
-export abstract class AuthLitElement extends DaisyUIElement {
+export abstract class AuthLitElement extends ErrorLitElement {
 
     @state() private _authStatus: AuthStatus = 'loading';
 
     // 子类可以覆盖这个方法来指定验证的 API 端点
     protected get verifyEndpoint(): string {
         return '/verify';
-    }
-
-    // 未认证或者认证失败
-    protected renderUnauthorized() {
-        return html`<unauthorized-element></unauthorized-element>`
-    }
-
-    protected renderError() {
-        return html`<error-element></error-element>`
-    }
-
-    protected renderLoading() {
-        return html`<loading-element></loading-element>`
     }
 
     protected abstract renderContent(): unknown;
@@ -94,8 +76,9 @@ export abstract class AuthLitElement extends DaisyUIElement {
             }).catch((e) => {
                 switch (e.response.status) {
                     case 401: this._authStatus = "unauth"; break
-                    case 403: this._authStatus = "unauth"; break
+                    case 403: this._authStatus = "forbidden"; break
                     case 500: this._authStatus = "error"; break
+                    default: this._authStatus = "error"; break
                 }
             })
         } catch {
@@ -107,6 +90,7 @@ export abstract class AuthLitElement extends DaisyUIElement {
         switch (this._authStatus) {
             case "ok": return this.renderContent()
             case "unauth": return this.renderUnauthorized()
+            case "forbidden": return this.renderForbidden()
             case "error": return this.renderError()
             case "loading": return this.renderLoading()
         }

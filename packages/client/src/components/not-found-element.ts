@@ -1,9 +1,9 @@
 import { html, css } from "lit";
 import { customElement } from "lit/decorators.js";
-import { DaisyUIElement } from "../components/daisy-ui-element";
+import { DaisyUIElement } from "./daisy-ui-element";
 
-@customElement("error-element")
-export class ErrorElement extends DaisyUIElement {
+@customElement("not-found-element")
+export class NotFoundElement extends DaisyUIElement {
 
     static defaultStyles = css`
         :host {
@@ -29,11 +29,11 @@ export class ErrorElement extends DaisyUIElement {
             width: 64px;
             height: 64px;
             border-radius: 16px;
-            background-color: oklch(var(--wa) / 0.08);
+            background-color: oklch(var(--bc) / 0.05);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: oklch(var(--wa));
+            color: oklch(var(--bc) / 0.3);
         }
 
         .icon-wrap svg {
@@ -51,8 +51,7 @@ export class ErrorElement extends DaisyUIElement {
             font-weight: 600;
             letter-spacing: 0.1em;
             text-transform: uppercase;
-            color: oklch(var(--wa));
-            opacity: 0.7;
+            color: oklch(var(--bc) / 0.35);
         }
 
         .title {
@@ -127,23 +126,18 @@ export class ErrorElement extends DaisyUIElement {
             <div class="container">
                 <div class="icon-wrap">
                     <svg viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <line x1="11" y1="8" x2="11" y2="14"></line>
+                        <line x1="8" y1="11" x2="14" y2="11"></line>
                     </svg>
                 </div>
-                <span class="code">出了点问题</span>
-                <h1 class="title">页面加载失败</h1>
-                <p class="desc">服务暂时无法响应，请稍后重试。如果问题持续存在，请联系管理员。</p>
+                <span class="code">404 Not Found</span>
+                <h1 class="title">页面不存在</h1>
+                <p class="desc">您访问的地址不存在，可能已被移动或删除。</p>
                 <div class="actions">
-                    <button class="btn-primary" @click=${() => window.location.reload()}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="23 4 23 10 17 10"></polyline>
-                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                        </svg>
-                        重新加载
-                    </button>
-                    <a class="btn-ghost" href="/">返回首页</a>
+                    <a class="btn-primary" href="/">返回首页</a>
+                    <button class="btn-ghost" @click=${() => window.history.back()}>返回上一页</button>
                 </div>
             </div>
         `;
