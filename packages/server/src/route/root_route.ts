@@ -47,15 +47,7 @@ export class RootRoute extends Route<VarsEnv<RootRouteSetEnv, RootRouteGetEnv>, 
 
     notFound() {
         this.hono.notFound((c) => {
-            return c.html(`
-                <!DOCTYPE html>
-                <html>
-                <head><title>404 Not Found</title></head>
-                <body style="text-align:center; padding:100px; font-family: sans-serif;">
-                    <h1>404</h1>
-                    <p>抱歉，您访问的页面已失踪。</p>
-                </body>
-                </html>`)
+            return c.redirect("/pages/error?code='404'")
         })
     }
 

@@ -26,6 +26,7 @@ export default defineConfig({
                 main: "index.html",
                 login: "./pages/login.html",
                 admin: "./pages/admin.html",
+                error: "./pages/error.html"
             }
         }
     },
