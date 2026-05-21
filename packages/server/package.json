@@ -7,7 +7,8 @@
     "preview": "$npm_execpath run build && vite preview",
     "deploy": "wrangler deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
-    "test": "vitest"
+    "test": "vitest",
+    "generate:doc": "tsx scripts/generate-doc.ts"
   },
   "dependencies": {
     "hono": "^4.12.14"
