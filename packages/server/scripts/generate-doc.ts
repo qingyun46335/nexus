@@ -1,10 +1,10 @@
-import { createApp } from "../src/app";
+import { createRoute } from "../src/app";
 import { ApiDocCollectorDefaultImpl } from "../src/utils/api_doc_collector";
 import fs from "node:fs";
 
 const collector = new ApiDocCollectorDefaultImpl();
 
-createApp(collector);
+createRoute(collector);
 
 const markdown = collector.toMarkdown();
 
