@@ -1,5 +1,6 @@
-export class BaseError extends Error {
+export abstract class BaseError extends Error {
   public readonly cause?: Error;
+  abstract readonly type: string;
 
   constructor(message: string, cause?: Error) {
     super(message);
@@ -36,24 +37,43 @@ export class BaseError extends Error {
 }
 
 export class ContentEmptyError extends BaseError {
+  type: string = "ContentEmptyError";
   constructor(message = "内容不能为空", cause?: Error) {
     super(message, cause);
   }
 }
 
 export class ValidationError extends BaseError {
+  type: string = "ValidationError";
   constructor(message = "内容格式不正确", cause?: Error) {
     super(message, cause);
   }
 }
 
 export class ContentRepeatError extends BaseError {
+  type: string = "ContentRepeatError";
   constructor(message = "内容已重复", cause?: Error) {
     super(message, cause);
   }
 }
 
+export class RequestParmError extends BaseError {
+  type: string = "RequestParmError";
+  constructor(message = "请求参数错误", cause?: Error) {
+    super(message, cause);
+  }
+}
+
+// 中间件错误
+export class KVCacheError extends BaseError {
+  type: string = "KVCacheError";
+  constructor(message = "KV  数据库错误", cause?: Error) {
+    super(message, cause);
+  }
+}
+
 export class CustomError extends BaseError {
+  type: string = "CustomError";
   constructor(message = "未知异常", cause?: Error) {
     super(message, cause);
   }
