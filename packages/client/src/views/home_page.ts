@@ -1,7 +1,6 @@
-import { html, css } from 'lit';
-import { DaisyUIElement } from '../components/daisy-ui-element'; // 路径按你的项目调整
-import { customElement } from 'lit/decorators.js';
-import axiosi from '../utils/axios';
+import { html, css } from "lit";
+import { DaisyUIElement } from "../components/daisy-ui-element"; // 路径按你的项目调整
+import { customElement } from "lit/decorators.js";
 
 @customElement("home-page")
 export class HomePage extends DaisyUIElement {
@@ -12,7 +11,12 @@ export class HomePage extends DaisyUIElement {
 
     .hero {
       min-height: 100vh;
-      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+      background: linear-gradient(
+        135deg,
+        #1e1b4b 0%,
+        #312e81 50%,
+        #4338ca 100%
+      );
     }
 
     .nexus-logo {
@@ -51,7 +55,9 @@ export class HomePage extends DaisyUIElement {
             <h1 class="nexus-logo mb-4">nexus</h1>
 
             <!-- 一句轻量描述 -->
-            <p class="text-indigo-200/80 text-lg sm:text-xl mb-10 font-light tracking-wide">
+            <p
+              class="text-indigo-200/80 text-lg sm:text-xl mb-10 font-light tracking-wide"
+            >
               连接数据 · 驱动智能
             </p>
 
@@ -84,23 +90,6 @@ export class HomePage extends DaisyUIElement {
 
   async _handleExplore() {
     // 自定义跳转逻辑，例如：
-
-    await this.testAxios()
     window.location.href = `/pages/login`;
   }
-
-  async testAxios() {
-    await axiosi.get("/testAxios").then(res => {
-      if (res.status === 200) {
-        console.log("/api/testAxios: ", res.data)
-      }
-    })
-
-    await axiosi.get("/test/test").then(res => {
-      if (res.status === 200) {
-        console.log("/api/test/test: ", res.data)
-      }
-    })
-  }
-
 }
