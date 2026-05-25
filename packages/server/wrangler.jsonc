@@ -9,4 +9,16 @@
   "assets": {
     "directory": "./dist/client/",
   },
+  "kv_namespaces": [
+    {
+      "binding": "UPLOAD_KV",
+      "id": "6ca9446d60d143eda572f1e3b5c83643",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "NEXUS_FILE_BUCKET", // <~ valid JavaScript variable name
+      "bucket_name": "nexus-file",
+    },
+  ],
 }
