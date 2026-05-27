@@ -95,18 +95,23 @@ export class MarkdownUtil {
 
     for (let i = 0; i < tokens.length; i++) {
       const tok = tokens[i];
+      const next = tokens[i + 1];
 
-      // 提取第一个 h1 作为标题
-      if (!title && tok.type === "heading_open" && tok.tag === "h1") {
-        // heading_open 的下一个 token 是 inline，其 content 是纯文本
-        title = tokens[i + 1]?.content ?? "";
+      // 提取标题
+      if (!title && tok.type === "heading_open" && /^h[1-5]$/.test(tok.tag)) {
+        if (next?.type === "inline") {
+          title = next.content.trim();
+        }
       }
 
-      // 提取第一个段落作为 description
+      // 提取描述
       if (!description && tok.type === "paragraph_open") {
-        const raw = tokens[i + 1]?.content ?? "";
-        // inline token 的 content 还含有行内语法，需要再 renderInline 或直接 strip
-        description = raw.replace(/[*_`[\]]/g, "").slice(0, 160);
+        if (next?.type === "inline") {
+          description = next.content
+            .replace(/[*_`[\]]/g, "")
+            .trim()
+            .slice(0, 160);
+        }
       }
 
       if (title && description) break;
