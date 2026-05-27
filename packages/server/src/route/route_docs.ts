@@ -1,18 +1,21 @@
 import { Env, Hono } from "hono";
-import { EnhancedRoute, Route } from "./route";
+import { Route } from "./route";
 import { Ok, Result } from "../utils/result";
 import { ApiDocCollector, ApiDocDef } from "../utils/api_doc_collector";
 import { BlankSchema } from "hono/types";
 
-export abstract class RouteDocs<E extends Env, S, G>
-  extends Route<E, S, G>
-  implements EnhancedRoute<E, S, G>
-{
+export abstract class RouteDocs<E extends Env, S, G> extends Route<E, S, G> {
   private apiDocCollector: ApiDocCollector;
 
   constructor(apiDocCollector: ApiDocCollector, prefix?: string) {
     super(prefix);
     this.apiDocCollector = apiDocCollector;
+  }
+
+  setDocsMethod(
+    fn: (app: Hono<E, BlankSchema, "/">) => unknown,
+  ): RouteDocs<E, S, G> {
+    return super.setMethod(fn) as RouteDocs<E, S, G>;
   }
 
   protected docsFns: ((ad: ApiDocDef) => ApiDocDef)[] = [];

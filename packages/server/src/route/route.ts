@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { Env } from "hono/types";
 import { Err, Ok, OkMsg, Result } from "../utils/result";
-import { ApiDocDef } from "../utils/api_doc_collector";
 
 /**
  * 继承Route 的路由，他的中间件中如果set了需要在路径之后的中间件中流转，那么之后的中间件需要明确在O中对get的属性明确声明，保证其类型安全
@@ -34,35 +33,13 @@ export type GroupRouteFn<E extends Env> = (
   app: Hono<E>,
 ) => Result<null> | Result<string>;
 
-export interface EnhancedRoute<E extends Env, S, G> {
-  setDocs(fn: (ad: ApiDocDef) => ApiDocDef): Route<E, S, G>;
-}
-
-export abstract class EnhancedRouteDefaultImpl<
-  E extends Env,
-  S,
-  G,
-> implements EnhancedRoute<E, S, G> {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  setDocs(fn: (ad: ApiDocDef) => ApiDocDef): Route<E, S, G> {
-    throw new Error("Method not implemented.");
-  }
-}
-
 export type methodInfor = {
   method: string;
   path: string;
   fullPrefix: string;
 };
 
-export interface MethodBuilder<E extends Env, S, G> {
-  setMethod(fn: (app: Hono<E>) => unknown): EnhancedRoute<E, S, G>;
-}
-
-export abstract class Route<E extends Env, S, G>
-  extends EnhancedRouteDefaultImpl<E, S, G>
-  implements MethodBuilder<E, S, G>
-{
+export abstract class Route<E extends Env, S, G> {
   private prefix: string = "";
   private fullPath: string = "";
   protected hono: Hono<E>;
@@ -80,7 +57,6 @@ export abstract class Route<E extends Env, S, G>
   }
 
   constructor(prefix?: string) {
-    super();
     if (prefix) {
       this.initPrefixNotNull(prefix);
     } else {
@@ -155,7 +131,7 @@ export abstract class Route<E extends Env, S, G>
   }
 
   protected methodFns: ((app: Hono<E>) => methodInfor)[] = [];
-  setMethod(fn: (app: Hono<E>) => unknown): EnhancedRoute<E, S, G> {
+  setMethod(fn: (app: Hono<E>) => unknown): Route<E, S, G> {
     this.methodFns.push((app: Hono<E>) => {
       const before = this.hono.routes.length;
 
@@ -194,7 +170,7 @@ export abstract class Route<E extends Env, S, G>
     return this.methodRegister(app);
   }
 
-  abstract setupMehods(r: MethodBuilder<E, S, G>): void;
+  abstract setupMehods(r: Route<E, S, G>): void;
 
   build(): Result<Hono<E>> {
     this.setupMehods(this);

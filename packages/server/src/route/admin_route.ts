@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { BlankSchema } from "hono/types";
 import { Ok, Result } from "../utils/result";
-import { MethodBuilder, VarsAndBindingsEnv } from "./route";
+import { VarsAndBindingsEnv } from "./route";
 import { jwt, sign } from "hono/jwt";
 import { RouteDocs } from "./route_docs";
 // import { basicAuth } from "hono/basic-auth";
@@ -25,14 +25,8 @@ export class AdminRoute extends RouteDocs<
   AdminRouteSetEnv,
   AdminRouteGetEnv
 > {
-  setupMehods(
-    r: MethodBuilder<
-      VarsAndBindingsEnv<object, AdminRouteGetEnv, AdminRouteBindingsEnv>,
-      object,
-      AdminRouteGetEnv
-    >,
-  ): void {
-    r.setMethod((app) => {
+  setupMehods(r: this): void {
+    r.setDocsMethod((app) => {
       app.post("/login", async (c) => {
         const body = await c.req.parseBody();
         const username = body.username;

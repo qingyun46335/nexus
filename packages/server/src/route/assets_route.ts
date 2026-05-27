@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { BlankSchema } from "hono/types";
 import { Ok, Result } from "../utils/result";
-import { MethodBuilder, Route, VarsAndBindingsEnv } from "./route";
+import { Route, VarsAndBindingsEnv } from "./route";
 
 export type AssetsRouteSetEnv = object;
 
@@ -37,17 +37,7 @@ export class AssetsRoute extends Route<
   ): Result<null> {
     return Ok(null);
   }
-  setupMehods(
-    r: MethodBuilder<
-      VarsAndBindingsEnv<
-        AssetsRouteSetEnv,
-        AssetsRouteGetEnv,
-        AssetsRouteBindingsEnv
-      >,
-      AssetsRouteSetEnv,
-      AssetsRouteGetEnv
-    >,
-  ): void {
+  setupMehods(r: this): void {
     r.setMethod((app) => {
       app.get("/img/:name", async (c) => {
         const { name } = c.req.param();

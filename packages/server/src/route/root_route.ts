@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { BlankSchema } from "hono/types";
 import { Ok, Result } from "../utils/result";
-import { MethodBuilder, Route, VarsEnv } from "./route";
+import { Route, VarsEnv } from "./route";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import { logger } from "hono/logger";
@@ -19,9 +19,7 @@ export class RootRoute extends Route<
   RootRouteSetEnv,
   RootRouteGetEnv
 > {
-  setupMehods(
-    r: MethodBuilder<VarsEnv<RootRouteSetEnv, object>, RootRouteSetEnv, object>,
-  ): void {
+  setupMehods(r: this): void {
     r.setMethod((app) => {
       app.get("/", (c) => {
         // console.log("index html")

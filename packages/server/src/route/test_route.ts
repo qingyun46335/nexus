@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { BlankSchema } from "hono/types";
 import { Ok, Result } from "../utils/result";
-import { MethodBuilder, VarsEnv } from "./route";
+import { VarsEnv } from "./route";
 import { RouteDocs } from "./route_docs";
 
 type TestRouteSetEnv = object;
@@ -15,10 +15,8 @@ export class TestRoute extends RouteDocs<
   TestRouteSetEnv,
   TestRouteGetEnv
 > {
-  setupMehods(
-    r: MethodBuilder<VarsEnv<object, TestRouteGetEnv>, object, TestRouteGetEnv>,
-  ): void {
-    r.setMethod((app) => {
+  setupMehods(r: this): void {
+    r.setDocsMethod((app) => {
       app.get("/test", (c) => {
         return c.text("/test/test  请求完成", 200);
       });

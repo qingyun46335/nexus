@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { BlankSchema } from "hono/types";
 import { Ok, Result } from "../utils/result";
-import { MethodBuilder, VarsAndBindingsEnv } from "./route";
+import { VarsAndBindingsEnv } from "./route";
 import { RouteDocs } from "./route_docs";
 import { ArticleService } from "../service/article_service";
 import { requestParamErrorValidator, RespMap } from "../utils/response_mapping";
@@ -58,18 +58,8 @@ export class AdminArticleRoute extends RouteDocs<
   ): Result<null> {
     return Ok(null);
   }
-  setupMehods(
-    r: MethodBuilder<
-      VarsAndBindingsEnv<
-        AdminArticleRouteSetEnv,
-        AdminArticleRouteGetEnv,
-        AdminArticleRouteBindingsEnv
-      >,
-      object,
-      object
-    >,
-  ): void {
-    r.setMethod((app) => {
+  setupMehods(r: this): void {
+    r.setDocsMethod((app) => {
       app.post("/prepare", async (c) => {
         const body = await c.req.parseBody();
         const { filesNum } = body;
@@ -91,7 +81,7 @@ export class AdminArticleRoute extends RouteDocs<
         return c.json(res?.body, res?.status);
       });
     });
-    r.setMethod((app) => {
+    r.setDocsMethod((app) => {
       app.post("/upload", async (c) => {
         const body = await c.req.parseBody();
         const uploadId = body[`uploadId`] as string;
@@ -123,7 +113,7 @@ export class AdminArticleRoute extends RouteDocs<
         return c.json(res?.body, res?.status);
       });
     });
-    r.setMethod((app) => {
+    r.setDocsMethod((app) => {
       app.post("/upload_after", async (c) => {
         const body = await c.req.parseBody();
         const uploadId = body[`uploadId`] as string;

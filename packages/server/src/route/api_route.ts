@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { BlankSchema } from "hono/types";
 import { Ok, Result } from "../utils/result";
-import { MethodBuilder, VarsAndBindingsEnv } from "./route";
+import { VarsAndBindingsEnv } from "./route";
 import { verify } from "hono/jwt";
 import { JWTPayload } from "hono/utils/jwt/types";
 import { RouteDocs } from "./route_docs";
@@ -42,14 +42,8 @@ export class ApiRoute extends RouteDocs<
     return Ok(null);
   }
 
-  setupMehods(
-    r: MethodBuilder<
-      VarsAndBindingsEnv<ApiRouteSetEnv, ApiRouteGetEnv, ApiRouteBindingsEnv>,
-      ApiRouteSetEnv,
-      ApiRouteGetEnv
-    >,
-  ): void {
-    r.setMethod((app) => {
+  setupMehods(r: this): void {
+    r.setDocsMethod((app) => {
       app.get("/verify", async (c) => {
         const authHeader = c.req.header("authorization");
 
