@@ -241,14 +241,14 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
           await new Promise<void>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
 
+            xhr.open("POST", `/api/article/upload`);
+
             if (window.localStorage.getItem("token")) {
               xhr.setRequestHeader(
                 "Authorization",
                 `Basic ${window.localStorage.getItem("token")}`,
               );
             }
-
-            xhr.open("POST", `/api/article/upload`);
 
             xhr.upload.onprogress = (e) => {
               if (e.lengthComputable) {
