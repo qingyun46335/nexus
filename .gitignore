@@ -41,3 +41,5 @@ discard/
 .dev.vars
 .dev.vars.local
 .dev.vars.production
+
+sandbox/
