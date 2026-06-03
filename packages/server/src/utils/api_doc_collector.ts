@@ -16,7 +16,7 @@ export class ApiDocCollectorVoidImpl extends ApiDocCollector {
     return "";
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  set(data: ApiDocDef) {}
+  set(data: ApiDocDef) { }
 }
 
 export class ApiDocCollectorDefaultImpl extends ApiDocCollector {
@@ -28,29 +28,27 @@ export class ApiDocCollectorDefaultImpl extends ApiDocCollector {
 
 ${doc.description}
 
-${
-  doc.params
-    ? `
+${doc.params
+            ? `
 ## Params
 
 ${Object.entries(doc.params)
-  .map(([k, v]) => `- \`${k}\`: ${v}`)
-  .join("\n")}
+              .map(([k, v]) => `- \`${k}\`: ${v}`)
+              .join("\n")}
 `
-    : ""
-}
+            : ""
+          }
 
-${
-  doc.body
-    ? `
+${doc.body
+            ? `
 ## Body
 
 ${Object.entries(doc.body)
-  .map(([k, v]) => `- \`${k}\`: ${v}`)
-  .join("\n")}
+              .map(([k, v]) => `- \`${k}\`: ${v}`)
+              .join("\n")}
 `
-    : ""
-}
+            : ""
+          }
 `;
       })
       .join("\n---\n");
