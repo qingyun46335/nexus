@@ -1,128 +1,36 @@
-import { html, css } from "lit";
+import { html, css, nothing } from "lit";
 import { customElement, state, property } from "lit/decorators.js";
-import axios from "axios";
-import { DaisyUIElement } from "../../components/daisy-ui-element";
 import type { AdminArticle, TagItem } from "../../type/admin";
 
 import "../../components/article-table";
 import "../../components/modal/admin_article_modal";
 import "../../components/sidebar-stats";
 import "../../components/modal/tag-edit-modal";
+import axiosi from "../../utils/axios";
+import { AuthLitElement } from "../../components/auth-lit-element";
 
-// ────────────────────────────────────────────────────────────
-//  Types
-// ────────────────────────────────────────────────────────────
-
-
-
-
-
-
-
-// 测试数据
-const testArticles: AdminArticle[] = [
-  {
-    id: "1",
-    title: "测试文章 1测试文章 1测试文章 1测试文章 1测试文章 1",
-    description: "这是第一篇测试文章的描述这是第一篇测试文章的描述这是第一篇测试文章的描述这是第一篇测试文章的描述这是第一篇测试文章的描述",
-    tags: ["测试", "文章"],
-    status: "published",
-    createdAt: "2023-01-01",
-    updatedAt: "2023-01-02",
-    views: 100,
-    wordCount: 500,
-  },
-  {
-    id: "2",
-    title: "测试文章 2",
-    description: "这是第二篇测试文章的描述",
-    tags: ["测试", "文章"],
-    status: "draft",
-    createdAt: "2023-01-03",
-    updatedAt: "2023-01-04",
-    views: 50,
-    wordCount: 300,
-  },
-  {
-    id: "3",
-    title: "测试文章 3",
-    description: "这是第三篇测试文章的描述",
-    tags: ["测试", "文章"],
-    status: "draft",
-    createdAt: "2023-01-03",
-    updatedAt: "2023-01-04",
-    views: 50,
-    wordCount: 300,
-  },
-  {
-    id: "4",
-    title: "测试文章 4",
-    description: "这是第四篇测试文章的描述",
-    tags: ["测试", "文章"],
-    status: "draft",
-    createdAt: "2023-01-03",
-    updatedAt: "2023-01-04",
-    views: 50,
-    wordCount: 300,
-  },
-  {
-    id: "5",
-    title: "测试文章 5",
-    description: "这是第五篇测试文章的描述",
-    tags: ["测试", "文章"],
-    status: "draft",
-    createdAt: "2023-01-03",
-    updatedAt: "2023-01-04",
-    views: 50,
-    wordCount: 300,
-  },
-  {
-    id: "6",
-    title: "测试文章 6",
-    description: "这是第六篇测试文章的描述",
-    tags: ["测试", "文章"],
-    status: "draft",
-    createdAt: "2023-01-03",
-    updatedAt: "2023-01-04",
-    views: 50,
-    wordCount: 300,
-  },
-  {
-    id: "7",
-    title: "测试文章 7",
-    description: "这是第七篇测试文章的描述",
-    tags: ["测试", "文章"],
-    status: "draft",
-    createdAt: "2023-01-03",
-    updatedAt: "2023-01-04",
-    views: 50,
-    wordCount: 300,
-  },
-];
-
-
-
-const testTags: TagItem[] = [
-  { name: "测试", count: 2, status: "active" },
-  { name: "文章", count: 2, status: "active" },
-  { name: "示例", count: 1, status: "active" },
-  { name: "标签A", count: 5, status: "active" },
-  { name: "标签B", count: 3, status: "active" },
-  { name: "标签C", count: 8, status: "active" },
-  { name: "测试", count: 2, status: "active" },
-  { name: "文章", count: 2, status: "active" },
-  { name: "示例", count: 1, status: "active" },
-  { name: "标签A", count: 5, status: "active" },
-  { name: "标签B", count: 3, status: "active" },
-  { name: "标签C", count: 8, status: "active" },
-];
+// const testTags: TagEditItem[] = [
+//   { id: "", name: "测试", count: 2, status: "active", isEditing: false },
+//   { id: "", name: "文章", count: 2, status: "active", isEditing: false },
+//   { id: "", name: "示例", count: 1, status: "active", isEditing: false },
+//   { id: "", name: "标签A", count: 5, status: "active", isEditing: false },
+//   { id: "", name: "标签B", count: 3, status: "active", isEditing: false },
+//   { id: "", name: "标签C", count: 8, status: "active", isEditing: false },
+//   { id: "", name: "测试", count: 2, status: "active", isEditing: false },
+//   { id: "", name: "文章", count: 2, status: "active", isEditing: false },
+//   { id: "", name: "示例", count: 1, status: "active", isEditing: false },
+//   { id: "", name: "标签A", count: 5, status: "active", isEditing: false },
+//   { id: "", name: "标签B", count: 3, status: "active", isEditing: false },
+//   { id: "", name: "标签C", count: 8, status: "active", isEditing: false },
+// ];
 
 // ────────────────────────────────────────────────────────────
 //  Component
 // ────────────────────────────────────────────────────────────
 
 @customElement("article-page")
-export class ArticlePage extends DaisyUIElement {
+export class ArticlePage extends (AuthLitElement) {
+
   // ── Props ────────────────────────────────────────────────
   @property({ type: String }) apiBase = "/api";
 
@@ -134,19 +42,25 @@ export class ArticlePage extends DaisyUIElement {
 
   // ── Pagination ───────────────────────────────────────────
   @state() private page = 1;
-  @state() private pageSize = 20;
+  @state() private pageSize = 10;
   @state() private total = 0;
 
   // ── Data ─────────────────────────────────────────────────
-  @state() private articles: AdminArticle[] = testArticles;
-  @state() private allTags: TagItem[] = testTags;
+  @state() private articles: AdminArticle[] = [];
+  @state() private allTags: TagItem[] = [];
   @state() private loading = false;
-  @state() private error = "";
+  @state() private error1 = "";
   @state() private dateIntervalType: "createdAt" | "updatedAt" = "createdAt";
+
+  log() {
+    console.log(this.error1, this.dateIntervalType)
+  }
 
   @state() private showUploadModal = false;
 
   @state() private showTagEditModal = false;
+
+
 
   // ── Lifecycle ────────────────────────────────────────────
   connectedCallback() {
@@ -157,42 +71,41 @@ export class ArticlePage extends DaisyUIElement {
 
   // ── API calls ────────────────────────────────────────────
   private async _fetchTags() {
-    // try {
-    //   const res = await axios.get<TagItem[]>(`${this.apiBase}/tags`);
-    //   this.allTags = res.data;
-    // } catch {
-    //   // tags failing silently is acceptable
-    // }
+    try {
+      const res = await axiosi.get<{ value: TagItem[] }>(`/admin/tag/selectTags?status=active`);
+      this.allTags = res.data.value;
+    } catch {
+      // tags failing silently is acceptable
+    }
   }
 
   private async _fetchArticles() {
-    // this.loading = true;
-    // this.error = "";
-    // try {
-    //   const params: Record<string, unknown> = {
-    //     page: this.page,
-    //     pageSize: this.pageSize,
-    //   };
-    //   if (this.keyword.trim()) params.keyword = this.keyword.trim();
-    //   if (this.dateIntervalType) params.dateIntervalType = this.dateIntervalType;
-    //   if (this.dateFrom) params.dateFrom = this.dateFrom;
-    //   if (this.dateTo) params.dateTo = this.dateTo;
-    //   if (this.selectedTags.size)
-    //     params.tags = [...this.selectedTags].join(",");
+    this.loading = true;
+    this.error1 = "";
+    try {
+      const params: Record<string, unknown> = {
+        page: this.page,
+        pageSize: this.pageSize,
+      };
+      if (this.keyword.trim()) params.keyword = this.keyword.trim();
+      if (this.dateIntervalType) params.dateIntervalType = this.dateIntervalType;
+      if (this.dateFrom) params.dateFrom = this.dateFrom;
+      if (this.dateTo) params.dateTo = this.dateTo;
+      if (this.selectedTags.size)
+        params.tags = [...this.selectedTags].join(",");
 
-    //   const res = await axios.get<ArticleListResponse>(
-    //     `${this.apiBase}/articles`,
-    //     { params },
-    //   );
-    //   // this.articles = res.data.data;
-    //   this.total = res.data.total;
-    //   this.page = res.data.page;
-    // } catch (e: unknown) {
-    //   this.error =
-    //     e instanceof Error ? e.message : "请求失败，请检查网络后重试";
-    // } finally {
-    //   this.loading = false;
-    // }
+      const res = await axiosi.get(
+        "/admin/article/selectArticle",
+        { params },
+      );
+      this.articles = res.data.value.rows;
+      this.total = res.data.value.total;
+    } catch (e: unknown) {
+      this.error1 =
+        e instanceof Error ? e.message : "请求失败，请检查网络后重试";
+    } finally {
+      this.loading = false;
+    }
   }
 
   // ── Handlers ─────────────────────────────────────────────
@@ -207,13 +120,13 @@ export class ArticlePage extends DaisyUIElement {
   }
 
   private _onDateFrom(e: Event) {
-    this.dateFrom = (e.target as HTMLInputElement).value;
+    this.dateFrom = (e.target as HTMLInputElement).value.replace("T", " ") + ":00";
     this.page = 1;
     this._fetchArticles();
   }
 
   private _onDateTo(e: Event) {
-    this.dateTo = (e.target as HTMLInputElement).value;
+    this.dateTo = (e.target as HTMLInputElement).value.replace("T", " ") + ":00";
     this.page = 1;
     this._fetchArticles();
   }
@@ -276,10 +189,10 @@ export class ArticlePage extends DaisyUIElement {
         (t) => html`
                   <button
                     class="badge badge-md cursor-pointer select-none transition-all
-                      ${this.selectedTags.has(t.name)
+                      ${this.selectedTags.has(t.id)
             ? "badge-primary"
             : "badge-ghost border border-base-content/20 hover:badge-outline"}"
-                    @click=${() => this._toggleTag(t.name)}
+                    @click=${() => this._toggleTag(t.id)}
                   >
                     ${t.name}
                     <span class="ml-1 opacity-50 text-xs">${t.count}</span>
@@ -356,8 +269,7 @@ export class ArticlePage extends DaisyUIElement {
     `;
   }
 
-  // ── Main render ──────────────────────────────────────────
-  render() {
+  protected renderContent(): unknown {
     return html`
       <div class="page-root">
         <!-- ── HEADER ────────────────────────────────────── -->
@@ -400,7 +312,7 @@ export class ArticlePage extends DaisyUIElement {
               <input @click="${() => this.dateIntervalType = 'updatedAt'}" type="radio" name="radio-1" class="radio radio-primary radio-xs" /><p>modifier</p>
 
               <input
-                type="date"
+                type="datetime-local"
                 class="input input-bordered input-sm w-36"
                 .value=${this.dateFrom}
                 @change=${this._onDateFrom}
@@ -408,7 +320,7 @@ export class ArticlePage extends DaisyUIElement {
               />
               <span class="text-base-content/40 text-sm">—</span>
               <input
-                type="date"
+                type="datetime-local"
                 class="input input-bordered input-sm w-36"
                 .value=${this.dateTo}
                 @change=${this._onDateTo}
@@ -495,7 +407,7 @@ export class ArticlePage extends DaisyUIElement {
                     ></span>
                   </div>
                 `
-        // : this.error
+        // : this.error1
         //   ? html`
         //       <div class="alert alert-error m-4">
         //         <svg
@@ -512,7 +424,7 @@ export class ArticlePage extends DaisyUIElement {
         //             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
         //           />
         //         </svg>
-        //         <span>${this.error}</span>
+        //         <span>${this.error1}</span>
         //         <button
         //           class="btn btn-sm btn-ghost"
         //           @click=${this._fetchArticles}
@@ -545,7 +457,7 @@ export class ArticlePage extends DaisyUIElement {
         @modal-closed=${() => this.showUploadModal = false}
       ></admin-article-modal>
 
-      <tag-edit-modal ?isOpen=${this.showTagEditModal} @modal-closed=${() => this.showTagEditModal = false}></tag-edit-modal>
+      ${this.showTagEditModal ? html`<tag-edit-modal ?isOpen=${this.showTagEditModal} @modal-closed=${() => this.showTagEditModal = false}></tag-edit-modal>` : nothing}
     `;
   }
 
