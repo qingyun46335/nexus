@@ -1,14 +1,16 @@
-import { AdminRoute } from "./route/admin_route";
+import { AdminRoute } from "./route/admin/admin_route";
 import { ApiRoute } from "./route/api_route";
-import { AdminArticleRoute } from "./route/article_route";
-import { AssetsRoute } from "./route/assets_route";
+import { AdminArticleRoute } from "./route/admin/article_route";
+import { AssetsRoute } from "./route/admin/assets_route";
 import { RootRoute } from "./route/root_route";
+import { AdminTagRoute } from "./route/admin/tag_route";
 import { TestRoute } from "./route/test_route";
 import Server from "./server/server";
 import {
   ApiDocCollector,
   ApiDocCollectorVoidImpl,
 } from "./utils/api_doc_collector";
+import { AdminStatsRoute } from "./route/admin/stats_route";
 
 export function createApp(apiDocCollector?: ApiDocCollector) {
   const route = createRoute(apiDocCollector);
@@ -33,9 +35,11 @@ export function createRoute(apiDocCollector?: ApiDocCollector): RootRoute {
   const api = route.setRoute(new ApiRoute(apiDocCollector));
 
   api.setRoute(new TestRoute(apiDocCollector));
-  api.setRoute(new AdminRoute(apiDocCollector));
-  api.setRoute(new AdminArticleRoute(apiDocCollector));
-  api.setRoute(new AssetsRoute());
+  const admin = api.setRoute(new AdminRoute(apiDocCollector));
+  admin.setRoute(new AdminArticleRoute(apiDocCollector));
+  admin.setRoute(new AssetsRoute());
+  admin.setRoute(new AdminTagRoute(apiDocCollector))
+  admin.setRoute(new AdminStatsRoute(apiDocCollector))
 
   return route;
 }
