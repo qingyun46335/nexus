@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { BlankSchema } from "hono/types";
-import { Ok, Result } from "../utils/result";
-import { VarsAndBindingsEnv } from "./route";
-import { jwt, sign } from "hono/jwt";
-import { RouteDocs } from "./route_docs";
+import { Ok, Result } from "../../utils/result";
+import { VarsAndBindingsEnv } from "../route";
+import { jwt, sign, verify } from "hono/jwt";
+import { RouteDocs } from "../route_docs";
 // import { basicAuth } from "hono/basic-auth";
 
 export type AdminRouteSetEnv = object;
@@ -72,6 +72,35 @@ export class AdminRoute extends RouteDocs<
     app.use("*", async (c, next) => {
       if (`${this.getFullPath()}/login` === c.req.path) {
         await next();
+      } else if (c.req.path.includes(`${this.getFullPath()}/assets/file`)) {
+
+        if (c.req.header("Authorization")) {
+          console.log("Authorization: ", c.req.header("Authorization"))
+          const jwtMiddleware = jwt({
+            secret: c.env.JWT_SECRET,
+            alg: "HS256",
+          });
+          return jwtMiddleware(c, next);
+        } else {
+          const token = c.req.query("token");
+
+          if (!token) {
+            return c.text("Missing token", 401);
+          }
+
+          try {
+            await verify(
+              token,
+              c.env.JWT_SECRET,
+              "HS256"
+            );
+
+            return next();
+          } catch {
+            return c.text("Invalid token", 401);
+          }
+        }
+
       } else {
         // 从环境变量或安全的地方获取密钥
         const jwtMiddleware = jwt({
