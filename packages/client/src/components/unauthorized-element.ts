@@ -1,5 +1,5 @@
 import { html, css } from "lit";
-import { customElement } from "lit/decorators.js";
+import { customElement, property } from "lit/decorators.js";
 import { DaisyUIElement } from "./daisy-ui-element";
 
 @customElement("unauthorized-element")
@@ -129,6 +129,9 @@ export class UnauthorizedElement extends DaisyUIElement {
         }
     `;
 
+    @property()
+    redirectUrl: string = ""
+
     render() {
         return html`
             <div class="container">
@@ -142,7 +145,7 @@ export class UnauthorizedElement extends DaisyUIElement {
                 <h1 class="title">需要登录才能访问</h1>
                 <p class="desc">您当前未登录，或登录已过期。请重新登录后继续。</p>
                 <div class="actions">
-                    <a class="btn-primary" href="/pages/login">前往登录</a>
+                    <a class="btn-primary" href="/pages/login${this.redirectUrl ? `?redirect=${encodeURIComponent(this.redirectUrl)}` : ""}">前往登录</a>
                     <a class="btn-ghost" href="/">返回首页</a>
                 </div>
             </div>

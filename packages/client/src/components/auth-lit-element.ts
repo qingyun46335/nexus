@@ -1,6 +1,8 @@
 import { state } from "lit/decorators.js";
 import axiosi from "../utils/axios";
 import { ErrorLitElement } from "./error-lit-element";
+import { html } from "lit";
+import { ToastWindowMixin } from "./toast_window_mixin";
 
 /**
  * AuthLitElement —— 需要身份验证的页面/组件的抽象基类
@@ -44,7 +46,7 @@ import { ErrorLitElement } from "./error-lit-element";
 
 type AuthStatus = 'loading' | 'ok' | `unauth` | 'forbidden' | 'error';
 
-export abstract class AuthLitElement extends ErrorLitElement {
+export class AuthLitElement extends ToastWindowMixin(ErrorLitElement) {
 
     @state() private _authStatus: AuthStatus = 'loading';
 
@@ -53,46 +55,95 @@ export abstract class AuthLitElement extends ErrorLitElement {
         return '/verify';
     }
 
-    protected abstract renderContent(): unknown;
+    protected renderContent(): unknown {
+        return html``
+    };
+
+    constructor() {
+        super()
+
+    }
 
     connectedCallback(): void {
         super.connectedCallback()
-        this._verifyToken()
+        this._verifyToken().then(res => {
+            console.log("Token 验证结果:", res);
+            this.saveRedirectUrl(res.status)
+        }).catch(e => {
+            console.error("Token 验证失败:", e);
+            this.saveRedirectUrl(e.status)
+        })
+
     }
 
-    private async _verifyToken() {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            this._authStatus = 'unauth';
+    private saveRedirectUrl(status?: number) {
+        if (location.pathname === "/login") {
             return;
         }
+
+        if (!localStorage.getItem("token")) {
+
+            localStorage.setItem(
+                "redirectUrl",
+                location.pathname +
+                location.search +
+                location.hash
+            );
+        } else {
+            if (status && status === 401) {
+                localStorage.setItem(
+                    "redirectUrl",
+                    location.pathname +
+                    location.search +
+                    location.hash
+                );
+            }
+        }
+    }
+
+    private async _verifyToken(): Promise<{ status: number }> {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.warn("未找到 token，用户未认证");
+            this._authStatus = 'unauth';
+            // 没有 token 属于已知校验失败，抛出错误让外层 catch 捕获
+            throw { status: 401 };
+        }
+
         try {
-            await axiosi.get(this.verifyEndpoint).then(res => {
-                console.log("res.status: ", res.status)
-                switch (res.status) {
-                    case 200: this._authStatus = "ok"; break
-                    default: this._authStatus = "error"; break
-                }
-            }).catch((e) => {
-                switch (e.response.status) {
-                    case 401: this._authStatus = "unauth"; break
-                    case 403: this._authStatus = "forbidden"; break
-                    case 500: this._authStatus = "error"; break
-                    default: this._authStatus = "error"; break
-                }
-            })
-        } catch {
-            this._authStatus = "error"
+            const res = await axiosi.get(this.verifyEndpoint);
+            console.log("验证接口响应:", res);
+
+            // 200 成功情况
+            this._authStatus = "ok";
+            return { status: res.status };
+        } catch (e) {
+            const status = e.response?.status || 500;
+            console.error("验证接口请求失败:", e);
+
+            // 根据状态码更新状态
+            switch (status) {
+                case 401: this._authStatus = "unauth"; break;
+                case 403: this._authStatus = "forbidden"; break;
+                default: this._authStatus = "error"; break;
+            }
+
+            // 【关键】将错误状态抛出，这样外层才能在 catch 中拿到这个 status
+            throw { status };
         }
     }
 
     render() {
+        let content;
         switch (this._authStatus) {
-            case "ok": return this.renderContent()
-            case "unauth": return this.renderUnauthorized()
-            case "forbidden": return this.renderForbidden()
-            case "error": return this.renderError()
-            case "loading": return this.renderLoading()
+            case "ok": content = this.renderContent(); break;
+            case "unauth": content = this.renderUnauthorized(); break;
+            case "forbidden": content = this.renderForbidden(); break;
+            case "error": content = this.renderError(); break;
+            case "loading": content = this.renderLoading(); break;
         }
+        return html`
+    ${content}
+  `;
     }
 }

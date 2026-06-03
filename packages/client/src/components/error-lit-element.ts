@@ -10,7 +10,7 @@ import { html } from "lit";
 export class ErrorLitElement extends DaisyUIElement {
     // 未认证或者认证失败
     protected renderUnauthorized() {
-        return html`<unauthorized-element></unauthorized-element>`
+        return html`<unauthorized-element .redirectUrl = ${localStorage.getItem("redirectUrl")}></unauthorized-element>`
     }
 
     protected renderForbidden() {
