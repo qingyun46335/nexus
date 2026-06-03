@@ -2,6 +2,7 @@ import { html, css, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ModalMixin } from '../modal-mixin';
 import { DaisyUIElement } from '../daisy-ui-element';
+import axiosi from '../../utils/axios';
 
 @customElement("audio-preview-modal")
 export class AudioPreviewModal extends ModalMixin(DaisyUIElement) {
@@ -19,10 +20,17 @@ export class AudioPreviewModal extends ModalMixin(DaisyUIElement) {
 
     @property({ type: String }) path = ""
 
+    @state() token = ""
+
     @state() textContent: string = "Loading...";
 
     constructor() {
         super();
+        axiosi.get("/access").then(res => {
+            if (res.status === 200) {
+                this.token = res.data
+            }
+        })
     }
 
     connectedCallback(): void {
@@ -33,8 +41,7 @@ export class AudioPreviewModal extends ModalMixin(DaisyUIElement) {
     protected renderContent(): TemplateResult {
         return html`
             <div>
-                <audio controls>
-                    <source src="${this.path}">
+                <audio src="${this.path}?token=${this.token}" controls>
                     Your browser does not support the audio tag.
                 </audio>
             </div>

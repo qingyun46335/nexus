@@ -63,7 +63,12 @@ export class LoginPage extends DaisyUIElement {
         if (res.status === 200) {
           this.showToast('登录成功！欢迎回来', 'success');
           window.localStorage.setItem("token", res.data.token)
-          location.href = "/pages/admin"
+          const params = new URLSearchParams(location.search);
+          console.log("params: ", params)
+
+          const redirect = params.get("redirect") || "/pages/admin"
+          localStorage.removeItem("redirectUrl")
+          location.href = redirect
         } else {
           this.showToast('用户名或密码错误', 'error');
           console.log("登陆失败了：", res.status)

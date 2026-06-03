@@ -41,7 +41,8 @@ export class TextPreviewModal extends ModalMixin(DaisyUIElement) {
         if (this.path === this.oldPath) {
             return; // 路径未变，不重复请求
         }
-        await axiosi.get(this.path)
+        const path = this.path.replace("/api", "")
+        await axiosi.get(path)
             .then(response => {
                 this.oldPath = this.path; // 更新旧路径
                 this.textContent = response.data;
