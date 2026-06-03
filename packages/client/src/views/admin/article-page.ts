@@ -2,10 +2,11 @@ import { html, css, nothing } from "lit";
 import { customElement, state, property } from "lit/decorators.js";
 import type { AdminArticle, TagItem } from "../../type/admin";
 
-import "../../components/article-table";
-import "../../components/modal/admin_article_modal";
-import "../../components/sidebar-stats";
-import "../../components/modal/tag-edit-modal";
+import "../../components/admin/article-table";
+import "../../components/modal/admin/admin_article_modal";
+import "../../components/admin/sidebar-stats";
+import "../../components/modal/admin/tag-edit-modal";
+import "../../components/admin-header";
 import axiosi from "../../utils/axios";
 import { AuthLitElement } from "../../components/auth-lit-element";
 
@@ -271,6 +272,7 @@ export class ArticlePage extends (AuthLitElement) {
 
   protected renderContent(): unknown {
     return html`
+      <admin-header></admin-header>
       <div class="page-root">
         <!-- ── HEADER ────────────────────────────────────── -->
         <header class="page-header card bg-base-100 shadow-sm">
