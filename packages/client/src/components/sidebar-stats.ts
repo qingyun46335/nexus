@@ -1,34 +1,35 @@
 import { html, css, svg } from "lit";
 import { customElement, state, property } from "lit/decorators.js";
-import axios from "axios";
+// import axios from "axios";
 import { DaisyUIElement } from "./daisy-ui-element";
+import axiosi from "../utils/axios";
 
 // ────────────────────────────────────────────────────────────
 //  Types
 // ────────────────────────────────────────────────────────────
 
 interface StatsOverview {
-    total: number;
-    published: number;
-    draft: number;
-    totalViews: number;
+  total: number;
+  published: number;
+  draft: number;
+  totalViews: number;
 }
 
 interface DailyPoint {
-    date: string;   // "YYYY-MM-DD"
-    value: number;
+  date: string;   // "YYYY-MM-DD"
+  value: number;
 }
 
 interface TagStat {
-    name: string;
-    count: number;
+  name: string;
+  count: number;
 }
 
 interface SidebarData {
-    overview: StatsOverview;
-    dailyArticles: DailyPoint[];   // last 30 days
-    dailyViews: DailyPoint[];      // last 30 days
-    topTags: TagStat[];            // top 8
+  overview: StatsOverview;
+  dailyArticles: DailyPoint[];   // last 30 days
+  dailyViews: DailyPoint[];      // last 30 days
+  topTags: TagStat[];            // top 8
 }
 
 type ChartMode = "articles" | "views";
@@ -38,32 +39,32 @@ type ChartMode = "articles" | "views";
 // ────────────────────────────────────────────────────────────
 
 function fmtNum(n: number): string {
-    if (n >= 10_000) return (n / 10_000).toFixed(1) + "w";
-    if (n >= 1_000) return (n / 1_000).toFixed(1) + "k";
-    return String(n);
+  if (n >= 10_000) return (n / 10_000).toFixed(1) + "w";
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + "k";
+  return String(n);
 }
 
 function polyline(
-    points: DailyPoint[],
-    w: number,
-    h: number,
-    pad = 6
+  points: DailyPoint[],
+  w: number,
+  h: number,
+  pad = 6
 ): { pts: string; fillPts: string; dots: { x: number; y: number; v: number }[] } {
-    if (!points.length) return { pts: "", fillPts: "", dots: [] };
-    const vals = points.map((p) => p.value);
-    const min = Math.min(...vals);
-    const max = Math.max(...vals);
-    const range = max - min || 1;
-    const xStep = (w - pad * 2) / Math.max(points.length - 1, 1);
-    const toX = (i: number) => pad + i * xStep;
-    const toY = (v: number) => pad + (1 - (v - min) / range) * (h - pad * 2);
-    const dots = points.map((p, i) => ({ x: toX(i), y: toY(p.value), v: p.value }));
-    const pts = dots.map((d) => `${d.x},${d.y}`).join(" ");
-    const fillPts =
-        `${dots[0].x},${h} ` +
-        dots.map((d) => `${d.x},${d.y}`).join(" ") +
-        ` ${dots[dots.length - 1].x},${h}`;
-    return { pts, fillPts, dots };
+  if (!points.length) return { pts: "", fillPts: "", dots: [] };
+  const vals = points.map((p) => p.value);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const range = max - min || 1;
+  const xStep = (w - pad * 2) / Math.max(points.length - 1, 1);
+  const toX = (i: number) => pad + i * xStep;
+  const toY = (v: number) => pad + (1 - (v - min) / range) * (h - pad * 2);
+  const dots = points.map((p, i) => ({ x: toX(i), y: toY(p.value), v: p.value }));
+  const pts = dots.map((d) => `${d.x},${d.y}`).join(" ");
+  const fillPts =
+    `${dots[0].x},${h} ` +
+    dots.map((d) => `${d.x},${d.y}`).join(" ") +
+    ` ${dots[dots.length - 1].x},${h}`;
+  return { pts, fillPts, dots };
 }
 
 // ────────────────────────────────────────────────────────────
@@ -72,107 +73,107 @@ function polyline(
 
 @customElement("sidebar-stats")
 export class SidebarStats extends DaisyUIElement {
-    @property({ type: String }) apiBase = "/api";
+  @property({ type: String }) apiBase = "/api";
 
-    @state() private data: SidebarData | null = mockSidebarData;
-    @state() private loading = true;
-    @state() private error = "";
-    @state() private chartMode: ChartMode = "articles";
-    @state() private sliding: "left" | "right" | null = null;
-    @state() private tooltip: { x: number; y: number; date: string; value: number } | null = null;
+  @state() private data: SidebarData | null = null;
+  @state() private loading = true;
+  @state() private error = "";
+  @state() private chartMode: ChartMode = "articles";
+  @state() private sliding: "left" | "right" | null = null;
+  @state() private tooltip: { x: number; y: number; date: string; value: number } | null = null;
 
-    connectedCallback() {
-        super.connectedCallback();
-        this._fetch();
+  connectedCallback() {
+    super.connectedCallback();
+    this._fetch();
+  }
+
+  private async _fetch() {
+    this.loading = true;
+    this.error = "";
+    try {
+      const res = await axiosi.get<SidebarData>(`/admin/stats/sidebar`);
+      this.data = res.data;
+    } catch (e: unknown) {
+      this.error = e instanceof Error ? e.message : "加载失败";
+    } finally {
+      this.loading = false;
     }
+  }
 
-    private async _fetch() {
-        this.loading = true;
-        this.error = "";
-        try {
-            // const res = await axios.get<SidebarData>(`${this.apiBase}/stats/sidebar`);
-            // this.data = res.data;
-        } catch (e: unknown) {
-            this.error = e instanceof Error ? e.message : "加载失败";
-        } finally {
-            this.loading = false;
-        }
-    }
+  // ── Chart mode switch with slide animation ────────────────
+  private async _switchChart(dir: "left" | "right") {
+    if (this.sliding) return;
+    const next: ChartMode =
+      this.chartMode === "articles" ? "views" : "articles";
+    this.sliding = dir;
+    await new Promise((r) => setTimeout(r, 260));
+    this.chartMode = next;
+    this.sliding = null;
+  }
 
-    // ── Chart mode switch with slide animation ────────────────
-    private async _switchChart(dir: "left" | "right") {
-        if (this.sliding) return;
-        const next: ChartMode =
-            this.chartMode === "articles" ? "views" : "articles";
-        this.sliding = dir;
-        await new Promise((r) => setTimeout(r, 260));
-        this.chartMode = next;
-        this.sliding = null;
-    }
+  // ── Tooltip ───────────────────────────────────────────────
+  private _onDotEnter(
+    e: MouseEvent,
+    date: string,
+    value: number
+  ) {
+    (e.target as SVGElement)
+      .closest("svg")!
+      .getBoundingClientRect();
+    const hostRect = this.getBoundingClientRect();
+    this.tooltip = {
+      x: (e.target as SVGElement).getBoundingClientRect().left - hostRect.left,
+      y: (e.target as SVGElement).getBoundingClientRect().top - hostRect.top - 36,
+      date,
+      value,
+    };
+  }
 
-    // ── Tooltip ───────────────────────────────────────────────
-    private _onDotEnter(
-        e: MouseEvent,
-        date: string,
-        value: number
-    ) {
-        const rect = (e.target as SVGElement)
-            .closest("svg")!
-            .getBoundingClientRect();
-        const hostRect = this.getBoundingClientRect();
-        this.tooltip = {
-            x: (e.target as SVGElement).getBoundingClientRect().left - hostRect.left,
-            y: (e.target as SVGElement).getBoundingClientRect().top - hostRect.top - 36,
-            date,
-            value,
-        };
-    }
+  private _onDotLeave() {
+    this.tooltip = null;
+  }
 
-    private _onDotLeave() {
-        this.tooltip = null;
-    }
+  // ── Renders ───────────────────────────────────────────────
 
-    // ── Renders ───────────────────────────────────────────────
-
-    private _renderCards(ov: StatsOverview) {
-        const cards = [
-            { label: "全部文章", value: ov.total, icon: "📄", accent: "card-total" },
-            { label: "已发布", value: ov.published, icon: "✅", accent: "card-pub" },
-            { label: "草稿", value: ov.draft, icon: "✏️", accent: "card-draft" },
-            { label: "总浏览", value: ov.totalViews, icon: "👁", accent: "card-views" },
-        ];
-        return html`
+  private _renderCards(ov: StatsOverview) {
+    const cards = [
+      { label: "全部文章", value: ov.total, icon: "📄", accent: "card-total" },
+      { label: "已发布", value: ov.published, icon: "✅", accent: "card-pub" },
+      { label: "草稿", value: ov.draft, icon: "✏️", accent: "card-draft" },
+      { label: "总浏览", value: ov.totalViews, icon: "👁", accent: "card-views" },
+    ];
+    return html`
       <div class="cards-grid">
         ${cards.map(
-            (c) => html`
+      (c) => html`
             <div class="stat-card ${c.accent}">
               <span class="card-icon">${c.icon}</span>
               <span class="card-value">${fmtNum(c.value)}</span>
               <span class="card-label">${c.label}</span>
             </div>
           `
-        )}
+    )}
       </div>
     `;
-    }
+  }
 
-    private _renderChart(data: SidebarData) {
-        const W = 220, H = 90;
-        const points =
-            this.chartMode === "articles" ? data.dailyArticles : data.dailyViews;
-        const { pts, fillPts, dots } = polyline(points, W, H);
-        const label =
-            this.chartMode === "articles" ? "每日新增文章" : "每日浏览量";
-        const gradId =
-            this.chartMode === "articles" ? "grad-articles" : "grad-views";
+  private _renderChart(data: SidebarData) {
+    const W = 220, H = 90;
+    const points =
+      this.chartMode === "articles" ? data.dailyArticles : data.dailyViews;
+    const { pts, fillPts, dots } = polyline(points, W, H);
+    const label =
+      this.chartMode === "articles" ? "每日新增文章" : "每日浏览量";
+    const gradId =
+      this.chartMode === "articles" ? "grad-articles" : "grad-views";
 
-        const slideClass = this.sliding
-            ? this.sliding === "right"
-                ? "slide-out-left"
-                : "slide-out-right"
-            : "slide-in";
+    const slideClass = this.sliding
+      ? this.sliding === "right"
+        ? "slide-out-left"
+        : "slide-out-right"
+      : "slide-in";
 
-        return html`
+    return html`
       <div class="chart-section">
         <!-- header -->
         <div class="chart-header">
@@ -206,11 +207,11 @@ export class SidebarStats extends DaisyUIElement {
               </defs>
               <!-- fill -->
               ${fillPts
-                ? svg`<polygon points="${fillPts}" fill="url(#${gradId})" />`
-                : ""}
+        ? svg`<polygon points="${fillPts}" fill="url(#${gradId})" />`
+        : ""}
               <!-- line -->
               ${pts
-                ? svg`<polyline
+        ? svg`<polyline
                     points="${pts}"
                     fill="none"
                     stroke="var(--chart-color)"
@@ -218,32 +219,32 @@ export class SidebarStats extends DaisyUIElement {
                     stroke-linejoin="round"
                     stroke-linecap="round"
                   />`
-                : ""}
+        : ""}
               <!-- dots -->
               ${dots.map(
-                    (d, i) => svg`
+          (d, i) => svg`
                   <circle
                     cx="${d.x}" cy="${d.y}" r="3"
                     fill="var(--chart-color)"
                     class="chart-dot"
                     @mouseenter=${(e: MouseEvent) =>
-                            this._onDotEnter(e, points[i].date, d.v)}
+              this._onDotEnter(e, points[i].date, d.v)}
                     @mouseleave=${this._onDotLeave}
                   />
                 `
-                )}
+        )}
             </svg>
           </div>
 
           <!-- x-axis: first & last date -->
           ${points.length
-                ? html`
+        ? html`
                 <div class="chart-axis">
                   <span>${points[0].date.slice(5)}</span>
                   <span>${points[points.length - 1].date.slice(5)}</span>
                 </div>
               `
-                : ""}
+        : ""}
         </div>
 
         <!-- mode dots indicator -->
@@ -253,16 +254,16 @@ export class SidebarStats extends DaisyUIElement {
         </div>
       </div>
     `;
-    }
+  }
 
-    private _renderTagBars(tags: TagStat[]) {
-        const max = Math.max(...tags.map((t) => t.count), 1);
-        return html`
+  private _renderTagBars(tags: TagStat[]) {
+    const max = Math.max(...tags.map((t) => t.count), 1);
+    return html`
       <div class="tags-section">
         <div class="section-title">标签热度</div>
         <div class="tag-bars">
           ${tags.map(
-            (t) => html`
+      (t) => html`
               <div class="tag-bar-row">
                 <span class="tag-name">${t.name}</span>
                 <div class="tag-bar-track">
@@ -274,31 +275,31 @@ export class SidebarStats extends DaisyUIElement {
                 <span class="tag-count">${t.count}</span>
               </div>
             `
-        )}
+    )}
         </div>
       </div>
     `;
-    }
+  }
 
-    render() {
-        if (this.loading) {
-            return html`
+  render() {
+    if (this.loading) {
+      return html`
         <div class="center-box">
           <span class="loading loading-spinner loading-md text-primary"></span>
         </div>
       `;
-        }
-        if (this.error) {
-            return html`
+    }
+    if (this.error) {
+      return html`
         <div class="center-box error-box">
           <span>${this.error}</span>
           <button class="btn btn-xs btn-ghost mt-2" @click=${this._fetch}>重试</button>
         </div>
       `;
-        }
-        if (!this.data) return html``;
+    }
+    if (!this.data) return html``;
 
-        return html`
+    return html`
       <div class="sidebar-root">
         ${this._renderCards(this.data.overview)}
         <div class="divider"></div>
@@ -308,7 +309,7 @@ export class SidebarStats extends DaisyUIElement {
 
         <!-- Tooltip -->
         ${this.tooltip
-                ? html`
+        ? html`
               <div
                 class="chart-tooltip"
                 style="left:${this.tooltip.x}px;top:${this.tooltip.y}px"
@@ -317,12 +318,12 @@ export class SidebarStats extends DaisyUIElement {
                 <span class="tip-val">${this.tooltip.value}</span>
               </div>
             `
-                : ""}
+        : ""}
       </div>
     `;
-    }
+  }
 
-    static defaultStyles = css`
+  static defaultStyles = css`
     :host {
       display: block;
       position: relative;
@@ -609,93 +610,7 @@ export class SidebarStats extends DaisyUIElement {
 }
 
 declare global {
-    interface HTMLElementTagNameMap {
-        "sidebar-stats": SidebarStats;
-    }
+  interface HTMLElementTagNameMap {
+    "sidebar-stats": SidebarStats;
+  }
 }
-
-const mockSidebarData: SidebarData = {
-    overview: {
-        total: 248,
-        published: 186,
-        draft: 62,
-        totalViews: 184532,
-    },
-
-    dailyArticles: [
-        { date: "2026-04-30", value: 1 },
-        { date: "2026-05-01", value: 2 },
-        { date: "2026-05-02", value: 0 },
-        { date: "2026-05-03", value: 3 },
-        { date: "2026-05-04", value: 1 },
-        { date: "2026-05-05", value: 4 },
-        { date: "2026-05-06", value: 2 },
-        { date: "2026-05-07", value: 5 },
-        { date: "2026-05-08", value: 1 },
-        { date: "2026-05-09", value: 0 },
-        { date: "2026-05-10", value: 2 },
-        { date: "2026-05-11", value: 3 },
-        { date: "2026-05-12", value: 1 },
-        { date: "2026-05-13", value: 6 },
-        { date: "2026-05-14", value: 4 },
-        { date: "2026-05-15", value: 2 },
-        { date: "2026-05-16", value: 3 },
-        { date: "2026-05-17", value: 1 },
-        { date: "2026-05-18", value: 5 },
-        { date: "2026-05-19", value: 2 },
-        { date: "2026-05-20", value: 4 },
-        { date: "2026-05-21", value: 3 },
-        { date: "2026-05-22", value: 1 },
-        { date: "2026-05-23", value: 2 },
-        { date: "2026-05-24", value: 0 },
-        { date: "2026-05-25", value: 4 },
-        { date: "2026-05-26", value: 5 },
-        { date: "2026-05-27", value: 3 },
-        { date: "2026-05-28", value: 2 },
-        { date: "2026-05-29", value: 6 },
-    ],
-
-    dailyViews: [
-        { date: "2026-04-30", value: 820 },
-        { date: "2026-05-01", value: 910 },
-        { date: "2026-05-02", value: 740 },
-        { date: "2026-05-03", value: 1020 },
-        { date: "2026-05-04", value: 1300 },
-        { date: "2026-05-05", value: 1180 },
-        { date: "2026-05-06", value: 990 },
-        { date: "2026-05-07", value: 1500 },
-        { date: "2026-05-08", value: 1420 },
-        { date: "2026-05-09", value: 1600 },
-        { date: "2026-05-10", value: 1710 },
-        { date: "2026-05-11", value: 1900 },
-        { date: "2026-05-12", value: 1750 },
-        { date: "2026-05-13", value: 2100 },
-        { date: "2026-05-14", value: 2320 },
-        { date: "2026-05-15", value: 1980 },
-        { date: "2026-05-16", value: 2450 },
-        { date: "2026-05-17", value: 2200 },
-        { date: "2026-05-18", value: 2680 },
-        { date: "2026-05-19", value: 2410 },
-        { date: "2026-05-20", value: 2590 },
-        { date: "2026-05-21", value: 3100 },
-        { date: "2026-05-22", value: 2870 },
-        { date: "2026-05-23", value: 2950 },
-        { date: "2026-05-24", value: 3400 },
-        { date: "2026-05-25", value: 3210 },
-        { date: "2026-05-26", value: 3560 },
-        { date: "2026-05-27", value: 3720 },
-        { date: "2026-05-28", value: 3480 },
-        { date: "2026-05-29", value: 4012 },
-    ],
-
-    topTags: [
-        { name: "Java", count: 48 },
-        { name: "Selenium", count: 41 },
-        { name: "Lit", count: 35 },
-        { name: "Cloudflare", count: 29 },
-        { name: "TypeScript", count: 26 },
-        { name: "Crawler", count: 24 },
-        { name: "D1", count: 19 },
-        { name: "Markdown", count: 17 },
-    ],
-};
