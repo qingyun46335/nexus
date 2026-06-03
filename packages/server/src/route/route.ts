@@ -24,10 +24,10 @@ type IsEmpty<T> = keyof T extends never ? true : false;
 // 核心检查：G 非空时，要求 G 必须被 S 完全覆盖（key 和 value 都要兼容）
 type CheckGetCovered<G, S> =
   IsEmpty<G> extends true
-    ? unknown
-    : S extends G // 改成 S extends G：S 必须是 G 的子类型（即 S 覆盖了 G 的所有字段）
-      ? unknown
-      : `Missing or incompatible variables: ${Extract<keyof G, string>}`;
+  ? unknown
+  : S extends G // 改成 S extends G：S 必须是 G 的子类型（即 S 覆盖了 G 的所有字段）
+  ? unknown
+  : `Missing or incompatible variables: ${Extract<keyof G, string>}`;
 
 export type GroupRouteFn<E extends Env> = (
   app: Hono<E>,
@@ -170,7 +170,7 @@ export abstract class Route<E extends Env, S, G> {
     return this.methodRegister(app);
   }
 
-  abstract setupMehods(r: Route<E, S, G>): void;
+  abstract setupMehods(r: this): void;
 
   build(): Result<Hono<E>> {
     this.setupMehods(this);
