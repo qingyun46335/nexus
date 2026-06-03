@@ -1,7 +1,6 @@
 import { html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { DaisyUIElement } from "./daisy-ui-element";
-import { ToastMixin } from "./toast-element";
 
 interface UploadFile {
   id: string;
@@ -13,7 +12,7 @@ interface UploadFile {
 }
 
 @customElement("blog-uploader")
-export class BlogUploader extends ToastMixin(DaisyUIElement) {
+export class BlogUploader extends DaisyUIElement {
   // 禁用 Shadow DOM，直接使用 Light DOM 以完美继承 DaisyUI 的主题和 Tailwind 类
   protected createRenderRoot() {
     return this;
@@ -36,6 +35,8 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
 
   private _fileMaxLength = 30;
 
+  private prohibitUpload: boolean = false
+
   // 格式化文件大小
   private formatSize(bytes: number) {
     if (bytes === 0) return "0 B";
@@ -54,9 +55,8 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
   private handleFileInput(e: Event) {
     const input = e.target as HTMLInputElement;
     if (!input.files) return;
-    this.showToast(
-      `文件数量超出，总计：${input.files.length}。应当在${this._fileMaxLength}以下`,
-      "alert-warning",
+    window.toast.warning(
+      `文件数量超出，总计：${input.files.length}。应当在${this._fileMaxLength}以下`
     );
     this.addFiles(Array.from(input.files));
     input.value = ""; // Reset
@@ -147,16 +147,41 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
   private removeFile(id: string) {
     if (this._isUploading) return;
     this._files = this._files.filter((f) => f.id !== id);
+    if (this._files.length === 0) {
+      this.prohibitUpload = false
+    }
   }
 
   // 模拟上传逻辑
   private async uploadFiles() {
+
+    let mdCount = 0
+
+    for (const current of this._files) {
+      const suffix = current.file.name.split(".").pop() || "";
+      if (suffix === "md" || suffix === ".md") {
+        mdCount++
+      }
+    }
+
+    if (mdCount === 0) {
+      window.toast.warning("markdown文件不存在")
+      return
+    } else if (mdCount >= 2) {
+      window.toast.warning("markdown文件数量大于一个，推荐分成两个文章上传")
+      return
+    }
+
+    if (this.prohibitUpload) {
+      window.toast.warning("请勿重复上传")
+      return
+    }
+
     if (this._files.length === 0 || this._isUploading) return;
 
     if (this._files.length > this._fileMaxLength) {
-      this.showToast(
-        `文件数量超出，总计：${this._files.length}。应当在${this._fileMaxLength}以下`,
-        "alert-warning",
+      window.toast.warning(
+        `文件数量超出，总计：${this._files.length}。应当在${this._fileMaxLength}以下`
       );
       return;
     }
@@ -168,7 +193,7 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
       /**
        * 1. prepare
        */
-      const prepareResp = await fetch(`/api/article/prepare`, {
+      const prepareResp = await fetch(`/api/admin/article/prepare`, {
         method: "POST",
         headers: {
           Authorization: window.localStorage.getItem("token")
@@ -241,7 +266,7 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
           await new Promise<void>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
 
-            xhr.open("POST", `/api/article/upload`);
+            xhr.open("POST", `/api/admin/article/upload`);
 
             if (window.localStorage.getItem("token")) {
               xhr.setRequestHeader(
@@ -301,7 +326,7 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
 
       afterForm.append("uploadId", uploadId);
 
-      const afterResp = await fetch(`/api/article/upload_after`, {
+      const afterResp = await fetch(`/api/admin/article/upload_after`, {
         method: "POST",
         headers: {
           Authorization: window.localStorage.getItem("token")
@@ -320,11 +345,11 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
        */
       const afterJson = await afterResp.json();
 
-      console.log(afterJson);
+      this.prohibitUpload = true
 
       // document.getElementById("modal_html")!.innerHTML = afterJson.value.html;
 
-      this.showToast("上传完成", "alert-success");
+      window.toast.success("上传完成");
 
       /**
        * 触发外部事件
@@ -340,9 +365,8 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
     } catch (e) {
       console.error(e);
 
-      this.showToast(
-        e instanceof Error ? e.message : "上传失败",
-        "alert-error",
+      window.toast.error(
+        e instanceof Error ? e.message : "上传失败"
       );
     } finally {
       this._isUploading = false;
@@ -358,8 +382,8 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
         <div
           class="relative border-2 border-dashed rounded-xl p-8 text-center transition-colors 
                  ${this._isDragging
-            ? "border-primary bg-primary/10"
-            : "border-base-300 hover:border-primary/50"}"
+        ? "border-primary bg-primary/10"
+        : "border-base-300 hover:border-primary/50"}"
           @dragover="${this.handleDragOver}"
           @dragleave="${this.handleDragLeave}"
           @drop="${this.handleDrop}"
@@ -389,16 +413,16 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
               <button
                 class="btn btn-primary btn-sm"
                 @click="${() =>
-                  this.querySelector<HTMLInputElement>("#fileInput")?.click()}"
+        this.querySelector<HTMLInputElement>("#fileInput")?.click()}"
               >
                 选择文件
               </button>
               <button
                 class="btn btn-secondary btn-sm"
                 @click="${() =>
-                  this.querySelector<HTMLInputElement>(
-                    "#folderInput",
-                  )?.click()}"
+        this.querySelector<HTMLInputElement>(
+          "#folderInput",
+        )?.click()}"
               >
                 选择文件夹
               </button>
@@ -425,7 +449,7 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
 
         <!-- 列表头部与全局进度 -->
         ${this._files.length > 0
-          ? html`
+        ? html`
               <div class="mt-6 flex justify-between items-end mb-2">
                 <h3 class="font-bold text-lg">
                   待上传队列 (${this._files.length})
@@ -444,34 +468,33 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
                     @click="${this.uploadFiles}"
                   >
                     ${this._isUploading
-                      ? html`<span
+            ? html`<span
                             class="loading loading-spinner loading-xs"
                           ></span>
                           上传中...`
-                      : "开始上传"}
+            : "开始上传"}
                   </button>
                 </div>
               </div>
 
               ${this._isUploading
-                ? html`
+            ? html`
                     <progress
                       class="progress progress-primary w-full mb-4"
                       value="${this._globalProgress}"
                       max="100"
                     ></progress>
                   `
-                : nothing}
+            : nothing}
 
               <!-- 文件列表 (响应式适配) -->
               <div class="bg-base-200 rounded-box max-h-96 overflow-y-auto">
                 ${this.isMobile
-                  ? this.renderMobileList()
-                  : this.renderDesktopTable()}
+            ? this.renderMobileList()
+            : this.renderDesktopTable()}
               </div>
             `
-          : nothing}
-        ${this.renderToast()}
+        : nothing}
       </div>
     `;
   }
@@ -490,7 +513,7 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
         </thead>
         <tbody>
           ${this._files.map(
-            (f) => html`
+      (f) => html`
               <tr class="hover">
                 <td class="w-16">${this.renderStatusIcon(f)}</td>
                 <td class="max-w-xs truncate" title="${f.relativePath}">
@@ -510,7 +533,7 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
                 </td>
               </tr>
             `,
-          )}
+    )}
         </tbody>
       </table>
     `;
@@ -521,7 +544,7 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
     return html`
       <div class="flex flex-col divide-y divide-base-300">
         ${this._files.map(
-          (f) => html`
+      (f) => html`
             <div class="p-3 flex items-center justify-between gap-3">
               <div>${this.renderStatusIcon(f)}</div>
               <div class="flex-1 min-w-0">
@@ -542,7 +565,7 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
               </button>
             </div>
           `,
-        )}
+    )}
       </div>
     `;
   }
@@ -553,8 +576,8 @@ export class BlogUploader extends ToastMixin(DaisyUIElement) {
     return html`
       <span class="flex items-center gap-2">
         ${isMd
-          ? html`<span class="badge badge-info badge-sm rounded-sm">MD</span>`
-          : nothing}
+        ? html`<span class="badge badge-info badge-sm rounded-sm">MD</span>`
+        : nothing}
         <span class="${isMd ? "font-bold" : ""}">${path}</span>
       </span>
     `;
