@@ -4,7 +4,7 @@ import fs from "node:fs";
 
 const collector = new ApiDocCollectorDefaultImpl();
 
-createRoute(collector);
+createRoute(collector).build();
 
 const markdown = collector.toMarkdown();
 
