@@ -8,6 +8,9 @@ export default defineConfig({
   }),
     // ssrPlugin()
   ],
+  build: {
+    sourcemap: true,
+  },
   environments: {
     server: {
       build: {
