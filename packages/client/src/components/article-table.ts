@@ -2,7 +2,8 @@ import { html, css, type TemplateResult, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { DaisyUIElement } from './daisy-ui-element';
 import type { AdminArticle, AdminArticleFile } from '../type/admin';
-
+import { truncateString } from '../utils/string_util';
+import axiosi from '../utils/axios';
 import { PreviewType } from '../type/admin';
 
 import 'iconify-icon';
@@ -10,94 +11,7 @@ import '../components/modal/text_preview_modal'
 import '../components/modal/image-preview-modal'
 import '../components/modal/audio-preview-modal'
 import '../components/modal/video-preview-modal'
-import { truncateString } from '../utils/string_util';
-
-const testArticleFiles = [
-    {
-        id: "file1",
-        uuid: "uuid-1",
-        suffix: "md",
-        name: "ok.md",
-        previewType: PreviewType.TEXT,
-        previewPath: "../../public/sandbox/article/ok.md",
-        size: "1MB",
-        filePath: "../../public/sandbox/article/ok.md",
-        relativePath: "file1.md",
-        articleId: "1"
-    },
-    {
-        id: "file3",
-        uuid: "uuid-3",
-        suffix: "png",
-        name: "{DCED1AA7-4E33-4ab1-AC7A-A98551AE0A53}.png",
-        previewType: PreviewType.IMAGE,
-        previewPath: "../../public/sandbox/article/{DCED1AA7-4E33-4ab1-AC7A-A98551AE0A53}.png",
-        size: "500KB",
-        filePath: "../../public/sandbox/article/{DCED1AA7-4E33-4ab1-AC7A-A98551AE0A53}.png",
-        relativePath: "file3.png",
-        articleId: "1"
-    },
-    {
-        id: "file4",
-        uuid: "uuid-4",
-        suffix: "png",
-        name: "~[RQIP3[K4S[DW4CGT1[AFC.png",
-        previewType: PreviewType.IMAGE,
-        previewPath: "../../public/sandbox/article/~[RQIP3[K4S[DW4CGT1[AFC.png",
-        size: "300KB",
-        filePath: "../../public/sandbox/article/~[RQIP3[K4S[DW4CGT1[AFC.png",
-        relativePath: "file4.png",
-        articleId: "1"
-    },
-    {
-        id: "file5",
-        uuid: "uuid-5",
-        suffix: "jpg",
-        name: "0141ae5b67c0aba801215c8ff45037.jpg@2o.jpg",
-        previewType: PreviewType.IMAGE,
-        previewPath: "../../public/sandbox/article/0141ae5b67c0aba801215c8ff45037.jpg@2o.jpg",
-        size: "500KB",
-        filePath: "../../public/sandbox/article/0141ae5b67c0aba801215c8ff45037.jpg@2o.jpg",
-        relativePath: "file5.jpg",
-        articleId: "1"
-    },
-    {
-        id: "file6",
-        uuid: "uuid-6",
-        suffix: "mp3",
-        name: "958ti-t3tlp.mp3",
-        previewType: PreviewType.AUDIO,
-        previewPath: "../../public/sandbox/article/958ti-t3tlp.mp3",
-        size: "3MB",
-        filePath: "../../public/sandbox/article/958ti-t3tlp.mp3",
-        relativePath: "file6.mp3",
-        articleId: "1"
-    },
-    {
-        id: "file7",
-        uuid: "uuid-7",
-        suffix: "mkv",
-        name: "Samsung 4K Hdr 60 Fps h264.mkv",
-        previewType: PreviewType.VIDEO,
-        previewPath: "../../public/sandbox/article/Samsung 4K Hdr 60 Fps h264.mkv",
-        size: "20MB",
-        filePath: "../../public/sandbox/article/Samsung 4K Hdr 60 Fps h264.mkv",
-        relativePath: "file7.mkv",
-        articleId: "1"
-    },
-    {
-        id: "file2",
-        uuid: "uuid-2",
-        suffix: "md",
-        name: "测试文章 2",
-        previewType: PreviewType.TEXT,
-        previewPath: "",
-        size: "2MB",
-        filePath: "/path/to/file2.md",
-        relativePath: "file2.md",
-        articleId: "2"
-    }
-]
+import '../components/modal/admin_article_edit_modal'
 
 // @customElement("article-table")
 // export class ArticleTable extends DaisyUIElement {
@@ -273,13 +187,12 @@ export class ArticleTable extends DaisyUIElement {
     articles: AdminArticle[] = [];
 
     @state()
-    articleFiles: Map<string, AdminArticleFile[]> = new Map([
-        // 这里只是为了演示，实际应用中建议为空，靠点击加载
-        ["1", testArticleFiles.filter(file => file.articleId === "1")],
-        ["2", testArticleFiles.filter(file => file.articleId === "2")]
-    ]);
+    articleFiles: Map<string, AdminArticleFile[]> = new Map();
 
     selectedFilePath: string = "";
+
+    @state() editArticle: boolean = false
+    @state() editArticleId: string = ""
 
     @state() textPreviewModalOpen: boolean = false;
     @state() imagePreviewModalOpen: boolean = false;
@@ -335,7 +248,7 @@ export class ArticleTable extends DaisyUIElement {
                             </td>
                             <td class="font-medium whitespace-nowrap min-w-[120px]">${truncateString(article.title, 12)}</td>
                             <td class="hidden lg:table-cell text-sm opacity-70">${truncateString(article.description, 20)}</td>
-                            <td class="hidden md:table-cell text-sm">${article.tags.join(", ")}</td>
+                            <td class="hidden md:table-cell text-sm">${article.tags ? JSON.parse(article.tags).join(", ") : ""}</td>
                             <td class="whitespace-nowrap">${articleStatusElementMap[article.status]}</td>
                             <td class="hidden xl:table-cell text-xs opacity-70">${article.createdAt}</td>
                             <td class="hidden xl:table-cell text-xs opacity-70">${article.updatedAt}</td>
@@ -367,7 +280,7 @@ export class ArticleTable extends DaisyUIElement {
                                             <tr class="hover:bg-base-200 transition-colors">
                                                 <td class="truncate max-w-[150px] md:max-w-xs" title="${file.name}">${truncateString(file.name, 50)}</td>
                                                 <td>
-                                                    <button class="btn btn-square btn-ghost btn-sm" @click="${() => this.previewFile(file.previewPath, file.previewType)}">
+                                                    <button class="btn btn-square btn-ghost btn-sm" @click="${() => this.previewFile(file.filePath, file.previewType)}">
                                                         <iconify-icon height="24" icon="${iconCompute(file.suffix.toLowerCase())}"></iconify-icon>
                                                     </button>
                                                 </td>
@@ -402,6 +315,8 @@ export class ArticleTable extends DaisyUIElement {
             `)}
         </div>
     </div>
+
+    ${this.editArticle ? html`<admin-article-edit-modal .articleId=${this.editArticleId} ?isOpen=${this.editArticle} @modal-closed=${() => this.editArticle = false}></admin-article-edit-modal>` : nothing}
 
     ${this.textPreviewModalOpen ? html`<text-preview-modal .path=${this.selectedFilePath} ?isOpen=${this.textPreviewModalOpen} @modal-closed=${() => this.textPreviewModalOpen = false}></text-preview-modal>` : nothing}
     ${this.imagePreviewModalOpen ? html`<image-preview-modal .path=${this.selectedFilePath} ?isOpen=${this.imagePreviewModalOpen} @modal-closed=${() => this.imagePreviewModalOpen = false}></image-preview-modal>` : nothing}
@@ -468,20 +383,27 @@ export class ArticleTable extends DaisyUIElement {
     LoadingFilesForArticle(id: string) {
         if (this.articleFiles.has(id)) return;
 
-        // 模拟加载文件数据
-        setTimeout(() => {
-            const files = testArticleFiles.filter(file => file.articleId === id);
-            this.articleFiles.set(id, files);
-            this.requestUpdate();
-        }, 500);
+        axiosi.get("/admin/article/selectArticleFiles?articleId=" + id).then(res => {
+            if (res.status === 200) {
+                this.articleFiles.set(id, res.data.value);
+                this.requestUpdate();
+            } else {
+                console.error("Failed to load article files: ", res.data.message);
+            }
+        });
     }
-    private _deleteArticleFile(id: string, id1: string) {
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    private _deleteArticleFile(_id: string, _id1: string) {
         throw new Error('Method not implemented.');
     }
-    _editArticle(id: string) {
-        throw new Error('Method not implemented.');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _editArticle(_id: string) {
+        this.editArticle = true
+        this.editArticleId = (_id ? _id : "")
     }
-    _deleteArticle(id: string) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _deleteArticle(_id: string) {
         throw new Error('Method not implemented.');
     }
 }
