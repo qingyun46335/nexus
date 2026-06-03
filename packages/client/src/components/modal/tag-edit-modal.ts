@@ -1,27 +1,11 @@
-import { html, css, type TemplateResult } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { html, css, type TemplateResult, type PropertyValues } from 'lit';
+import { customElement, state } from 'lit/decorators.js';
 import { ModalMixin } from '../modal-mixin';
 import { DaisyUIElement } from '../daisy-ui-element';
 import type { TagEditItem, TagItem } from '../../type/admin';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
-
-const testTags: TagEditItem[] = [
-    { name: "测试", count: 2, status: "active", isEditing: false },
-    { name: "文章", count: 2, status: "active", isEditing: false },
-    { name: "示例", count: 1, status: "active", isEditing: false },
-    { name: "标签A", count: 5, status: "active", isEditing: false },
-    { name: "标签B", count: 3, status: "active", isEditing: false },
-    { name: "标签C", count: 8, status: "active", isEditing: false },
-    { name: "测试", count: 2, status: "active", isEditing: false },
-    { name: "文章", count: 2, status: "active", isEditing: false },
-    { name: "示例", count: 1, status: "active", isEditing: false },
-    { name: "标签A", count: 5, status: "active", isEditing: false },
-    { name: "标签B", count: 3, status: "active", isEditing: false },
-    { name: "标签C", count: 8, status: "active", isEditing: false },
-];
-
-
+import axiosi from '../../utils/axios';
 
 @customElement("tag-edit-modal")
 export class TagEditModal extends ModalMixin(DaisyUIElement) {
@@ -29,7 +13,7 @@ export class TagEditModal extends ModalMixin(DaisyUIElement) {
         /* Styles go here */
     `;
 
-    @property({ type: Array }) tags: TagItem[] = testTags;
+    // @property({ type: Array }) tags: TagItem[] = [];
 
     get computedModalWidth(): string {
         return this.mobile.value ? '100vw' : '60vw';
@@ -39,13 +23,13 @@ export class TagEditModal extends ModalMixin(DaisyUIElement) {
         return this.mobile.value ? '50vh' : '70vh';
     }
 
-    newTagName: string;
+    newTagName: string = "";
 
     @state()
     isEditMode: boolean = false;
 
     @state()
-    editTags: TagEditItem[] = this.tags.map(tag => ({ ...tag, isEditing: false }));
+    editTags: TagEditItem[] = [];
 
     constructor() {
         super();
@@ -53,20 +37,60 @@ export class TagEditModal extends ModalMixin(DaisyUIElement) {
 
     del() {
         // 实现批量删除功能
+        const editIds = this.editTags.filter(t => t.isEditing)
+            .map(t => t.id);
         this.editTags = this.editTags.filter(t => !t.isEditing);
-        this.tags = this.editTags.filter(t => !this.editTags.includes(t));
+        const form = new FormData()
+        form.append("tagIds", JSON.stringify(editIds))
+        axiosi.post("/admin/tag/delTags", form).then(res => {
+            if (res.status === 200) {
+                window.toast.success("删除成功")
+            }
+        })
     }
 
     addTag() {
         if (this.newTagName && this.newTagName.trim() !== "") {
-            const newTag: TagItem = {
-                name: this.newTagName.trim(),
-                count: 0,
-                status: "active"
-            };
-            this.tags = [...this.tags, newTag];
-            this.newTagName = "";
+            const form = new FormData()
+            form.append("tag", this.newTagName.trim())
+            axiosi.post("/admin/tag/addTag", form).then(res => {
+                if (res.status === 200) {
+                    const newTag: TagItem = {
+                        id: res.data.value,
+                        name: this.newTagName.trim(),
+                        count: 0,
+                        status: "active"
+                    };
+                    this.editTags = [...this.editTags, newTag];
+                    this.newTagName = "";
+                }
+            })
         }
+    }
+
+    loadTags() {
+        axiosi.get("/admin/tag/selectTags").then(res => {
+            if (res.status === 200) {
+                const tags = res.data.value
+                this.editTags = tags.map(tag => ({ ...tag, isEditing: false }))
+            }
+        })
+    }
+
+    protected firstUpdated(_changedProperties: PropertyValues): void {
+        super.firstUpdated(_changedProperties)
+        this.loadTags()
+    }
+
+    updTag(tag: TagEditItem) {
+        const form = new FormData()
+        form.append("tagId", tag.id)
+        form.append("tagStatus", tag.status)
+        axiosi.post("/admin/tag/updTagStatus", form).then(res => {
+            if (res.status === 200) {
+                window.toast.success("状态更改成功")
+            }
+        })
     }
 
     protected toggleTag(tag: TagEditItem): void {
@@ -76,6 +100,7 @@ export class TagEditModal extends ModalMixin(DaisyUIElement) {
         } else {
             // 非编辑模式下，切换标签的激活状态
             tag.status = tag.status === "active" ? "inactive" : "active";
+            this.updTag(tag)
         }
         this.requestUpdate();
     }
