@@ -2,7 +2,7 @@ export interface AdminArticle {
     id: string;
     title: string;
     description: string;
-    tags: string[];
+    tags: string;
     status: "published" | "draft" | "archived";
     createdAt: string;
     updatedAt: string;
@@ -28,11 +28,11 @@ export const PreviewType = {
     IMAGE: 'image',
     VIDEO: 'video',
     AUDIO: 'audio',
-    OFFICE: 'office',
     UNSUPPORTED: 'unsupported'
 }
 
 export interface TagItem {
+    id: string;
     name: string;
     count: number;
     status: "active" | "inactive";
@@ -44,6 +44,7 @@ export interface TagEditItem extends TagItem {
 }
 
 export interface ArticleListResponse {
+    value: AdminArticle[];
     data: AdminArticle[];
     total: number;
     page: number;
