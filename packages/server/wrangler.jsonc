@@ -21,4 +21,12 @@
       "bucket_name": "nexus-file",
     },
   ],
+  "d1_databases": [
+    {
+      "binding": "nexus_db",
+      "database_name": "nexus-db",
+      "database_id": "7dc4cf98-7eba-419e-b0a9-d22b48d55898",
+      "migrations_dir": "./drizzle",
+    },
+  ],
 }

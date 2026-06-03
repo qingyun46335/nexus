@@ -9,9 +9,14 @@
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "test": "vitest",
     "generate:doc": "tsx scripts/generate-doc.ts",
-    "types": "wrangler types"
+    "types": "wrangler types",
+    "d1:create": "wrangler d1 create nexus-db",
+    "generate:db": "npx drizzle-kit generate",
+    "db:local-init": "wrangler d1 migrations apply nexus-db --local",
+    "db:remote-init": "wrangler d1 migrations apply nexus-db --remote"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.2",
     "hono": "^4.12.14",
     "markdown-it": "^14.1.1"
   },
@@ -21,6 +26,7 @@
     "@cloudflare/workers-types": "^4.20260523.1",
     "@eslint/js": "^10.0.1",
     "@types/markdown-it": "^14.1.2",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
     "prettier": "^3.8.3",
