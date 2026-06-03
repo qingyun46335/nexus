@@ -1,9 +1,9 @@
 import { html, css, type TemplateResult, type PropertyValues, } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { ModalMixin } from '../modal-mixin';
-import { DaisyUIElement } from '../daisy-ui-element';
-import axiosi from '../../utils/axios';
-import type { TagEditItem, TagItem } from '../../type/admin';
+import { ModalMixin } from '../../modal-mixin';
+import { DaisyUIElement } from '../../daisy-ui-element';
+import axiosi from '../../../utils/axios';
+import type { TagEditItem, TagItem } from '../../../type/admin';
 
 type UpdInfor = {
     title: string,

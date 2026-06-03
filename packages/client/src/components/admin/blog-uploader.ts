@@ -1,6 +1,6 @@
 import { html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { DaisyUIElement } from "./daisy-ui-element";
+import { DaisyUIElement } from "../daisy-ui-element";
 
 interface UploadFile {
   id: string;

@@ -1,8 +1,8 @@
 import { html, css, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { ModalMixin } from '../modal-mixin';
-import { DaisyUIElement } from '../daisy-ui-element';
-import axiosi from '../../utils/axios';
+import { ModalMixin } from '../../modal-mixin';
+import { DaisyUIElement } from '../../daisy-ui-element';
+import axiosi from '../../../utils/axios';
 
 @customElement("image-preview-modal")
 export class ImagePreviewModal extends ModalMixin(DaisyUIElement) {

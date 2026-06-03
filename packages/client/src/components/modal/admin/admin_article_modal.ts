@@ -1,9 +1,9 @@
 import { html, css, type TemplateResult } from 'lit';
 import { customElement } from 'lit/decorators.js';
-import { ModalMixin } from '../modal-mixin';
-import { DaisyUIElement } from '../daisy-ui-element';
+import { ModalMixin } from '../../modal-mixin';
+import { DaisyUIElement } from '../../daisy-ui-element';
 
-import '../blog-uploader';
+import '../../admin/blog-uploader';
 
 @customElement("admin-article-modal")
 export class AdminArticleModal extends ModalMixin(DaisyUIElement) {

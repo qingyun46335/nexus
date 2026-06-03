@@ -1,17 +1,17 @@
 import { html, css, type TemplateResult, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { DaisyUIElement } from './daisy-ui-element';
-import type { AdminArticle, AdminArticleFile } from '../type/admin';
-import { truncateString } from '../utils/string_util';
-import axiosi from '../utils/axios';
-import { PreviewType } from '../type/admin';
+import { DaisyUIElement } from '../daisy-ui-element';
+import type { AdminArticle, AdminArticleFile } from '../../type/admin';
+import { truncateString } from '../../utils/string_util';
+import axiosi from '../../utils/axios';
+import { PreviewType } from '../../type/admin';
 
 import 'iconify-icon';
-import '../components/modal/text_preview_modal'
-import '../components/modal/image-preview-modal'
-import '../components/modal/audio-preview-modal'
-import '../components/modal/video-preview-modal'
-import '../components/modal/admin_article_edit_modal'
+import '../modal/admin/text_preview_modal'
+import '../modal/admin/image-preview-modal'
+import '../modal/admin/audio-preview-modal'
+import '../modal/admin/video-preview-modal'
+import '../modal/admin/admin_article_edit_modal'
 
 // @customElement("article-table")
 // export class ArticleTable extends DaisyUIElement {

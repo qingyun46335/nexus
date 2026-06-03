@@ -1,21 +1,21 @@
 import { html, css, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { ModalMixin } from '../modal-mixin';
-import { DaisyUIElement } from '../daisy-ui-element';
-import axiosi from '../../utils/axios';
+import { ModalMixin } from '../../modal-mixin';
+import { DaisyUIElement } from '../../daisy-ui-element';
+import axiosi from '../../../utils/axios';
 
-@customElement("audio-preview-modal")
-export class AudioPreviewModal extends ModalMixin(DaisyUIElement) {
+@customElement("video-preview-modal")
+export class VideoPreviewModal extends ModalMixin(DaisyUIElement) {
     static defaultStyles = css`
         /* Styles go here */
     `;
 
     get computedModalWidth(): string {
-        return this.mobile.value ? '100vw' : '25vw';
+        return this.mobile.value ? '100vw' : '60vw';
     }
 
     get computedModalHeight(): string {
-        return this.mobile.value ? '13vh' : '16vh';
+        return this.mobile.value ? '80vh' : '70vh';
     }
 
     @property({ type: String }) path = ""
@@ -41,9 +41,9 @@ export class AudioPreviewModal extends ModalMixin(DaisyUIElement) {
     protected renderContent(): TemplateResult {
         return html`
             <div>
-                <audio src="${this.path}?token=${this.token}" controls>
-                    Your browser does not support the audio tag.
-                </audio>
+                <video  src="${this.path}?token=${this.token}" max-width="100%" max-height="100%" controls>
+                    Your browser does not support the video tag.
+                </video>
             </div>
         `;
     }

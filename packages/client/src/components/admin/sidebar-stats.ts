@@ -1,8 +1,8 @@
 import { html, css, svg } from "lit";
 import { customElement, state, property } from "lit/decorators.js";
 // import axios from "axios";
-import { DaisyUIElement } from "./daisy-ui-element";
-import axiosi from "../utils/axios";
+import { DaisyUIElement } from "../daisy-ui-element";
+import axiosi from "../../utils/axios";
 
 // ────────────────────────────────────────────────────────────
 //  Types

@@ -1,11 +1,11 @@
 import { html, css, type TemplateResult, type PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { ModalMixin } from '../modal-mixin';
-import { DaisyUIElement } from '../daisy-ui-element';
-import type { TagEditItem, TagItem } from '../../type/admin';
+import { ModalMixin } from '../../modal-mixin';
+import { DaisyUIElement } from '../../daisy-ui-element';
+import type { TagEditItem, TagItem } from '../../../type/admin';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
-import axiosi from '../../utils/axios';
+import axiosi from '../../../utils/axios';
 
 @customElement("tag-edit-modal")
 export class TagEditModal extends ModalMixin(DaisyUIElement) {
