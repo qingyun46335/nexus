@@ -1,5 +1,5 @@
 export const AssetsConfig = {
-  NEXUS_FILE_BUCKET: "/api/assets/img",
+  NEXUS_FILE_BUCKET: "/api/admin/assets/file",
 };
 
 export const BaseConfig = {
