@@ -1,5 +1,5 @@
 import { html, css } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import { customElement, property, } from "lit/decorators.js";
 import { AuthLitElement } from "../../components/auth-lit-element";
 
 export interface MenuItem {
@@ -27,8 +27,8 @@ export class AdminIndexPage extends AuthLitElement {
   @property({ type: String })
   username: string = "Admin";
 
-  @state()
-  private _hoveredIndex: number | null = null;
+  // @state()
+  // private _hoveredIndex: number | null = null;
 
   static defaultStyles = css`
     :host {
