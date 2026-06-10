@@ -1,16 +1,21 @@
 import { Result } from "./result";
 import {
   BaseError,
+  BUCKETError,
+  ContentNotFoundBusinessError,
   CustomError,
+  DataError,
+  DBError,
   KVCacheError,
   RequestParmError,
+  StorageCorruptedError,
   ValidationError,
 } from "../error/error";
 import { ContentfulStatusCode } from "hono/utils/http-status";
 
 export type HttpResResponse<T> = {
   status: ContentfulStatusCode;
-  body: { msg: string; value: T };
+  body: { code?: number, msg: string; value: T };
 };
 
 export type HttpErrorResponse = {
@@ -53,9 +58,29 @@ export const RespMap = ResponseMapping(
   {
     type: "",
     map: <T>(res: { msg: string; v: T }): HttpResResponse<T> | null => {
-      return { status: 200, body: { msg: res.msg, value: res.v } };
+      return { status: 200, body: { code: 200, msg: res.msg, value: res.v } };
     },
   },
+  {
+    type: new ContentNotFoundBusinessError().type,
+    map: (err: BaseError) => {
+      return { status: 200, body: { code: 300, msg: err.message } }
+    }
+  },
+  {
+    type: new DataError().type,
+    map(err) {
+      return { status: 200, body: { code: 350, msg: err.message } }
+    },
+  },
+  {
+    type: new StorageCorruptedError().type,
+    map: (err: BaseError) => {
+      return { status: 200, body: { code: 351, msg: err.message } }
+    }
+  },
+
+
   {
     type: new RequestParmError().type,
     map: (err: BaseError) => {
@@ -75,11 +100,24 @@ export const RespMap = ResponseMapping(
     },
   },
   {
+    type: new DBError().type,
+    map(err) {
+      return { status: 500, body: { msg: err.message } }
+    },
+  },
+  {
+    type: new BUCKETError().type,
+    map(err) {
+      return { status: 500, body: { msg: err.message } }
+    },
+  },
+  {
     type: new CustomError().type,
     map: (err: BaseError) => {
       return { status: 500, body: { msg: err.message } };
     },
   },
+
 );
 
 export function requestParamErrorValidator(
