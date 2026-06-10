@@ -88,6 +88,7 @@ export const suffixIconMap: Record<string, previewTypeEnum> = {
     svg: "image",
     ico: "image",
     bmp: "image",
+    jfif: "image",
 
     // ===== Audio =====
     mp3: "audio",
