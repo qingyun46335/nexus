@@ -8,7 +8,7 @@ import type { TagEditItem, TagItem } from '../../../type/admin';
 type UpdInfor = {
     title: string,
     description: string,
-    status: "published" | "draft" | "archived",
+    status: "published" | "draft" | "archived" | "hide",
 }
 
 @customElement("admin-article-edit-modal")
@@ -18,7 +18,7 @@ export class AdminArticleEditModal extends ModalMixin(DaisyUIElement) {
     `;
 
     @property()
-    articleId: string;
+    articleId: string = "";
 
     @state()
     updInfor: UpdInfor = {
@@ -51,11 +51,11 @@ export class AdminArticleEditModal extends ModalMixin(DaisyUIElement) {
     }
 
     @state()
-    title: string;
+    title: string = "";
     @state()
-    description: string;
+    description: string = "";
     @state()
-    status: string;
+    status: string = "";
 
     protected async firstUpdated(_changedProperties: PropertyValues): Promise<void> {
         super.firstUpdated(_changedProperties)
@@ -124,6 +124,7 @@ export class AdminArticleEditModal extends ModalMixin(DaisyUIElement) {
                     <input @click=${() => { this.updInfor.status = "draft" }} ?checked=${this.updInfor.status === "draft"} type="radio" name="radio-4" class="radio radio-primary" /><p>草稿</p>
                     <input @click=${() => { this.updInfor.status = "published" }} ?checked=${this.updInfor.status === "published"} type="radio" name="radio-4" class="radio radio-primary" /><p>发布</p>
                     <input @click=${() => { this.updInfor.status = "archived" }} ?checked=${this.updInfor.status === "archived"} type="radio" name="radio-4" class="radio radio-primary" /><p>归档</p>
+                    <input @click=${() => { this.updInfor.status = "hide" }} ?checked=${this.updInfor.status === "hide"} type="radio" name="radio-4" class="radio radio-primary" /><p>隐藏</p>
                 </div>
                 <div class="flex flex-wrap gap-2 p-2">
             ${this.allTags.map(tag => html`
