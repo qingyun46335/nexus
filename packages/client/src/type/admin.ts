@@ -3,7 +3,7 @@ export interface AdminArticle {
     title: string;
     description: string;
     tags: string;
-    status: "published" | "draft" | "archived";
+    status: "published" | "draft" | "archived" | "hide";
     createdAt: string;
     updatedAt: string;
     views: number;
@@ -18,6 +18,9 @@ export interface AdminArticleFile {
     previewType: string;
     previewPath: string;
     size: string;
+    showInAttachment: 1 | 0,
+    showInArticle: 1 | 0,
+    clientFilePath: string;
     filePath: string;
     relativePath: string;
     articleId: string;
