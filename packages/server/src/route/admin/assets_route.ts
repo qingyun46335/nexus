@@ -3,22 +3,22 @@ import { BlankSchema } from "hono/types";
 import { Ok, Result } from "../../utils/result";
 import { Route, VarsAndBindingsEnv } from "../route";
 
-export type AssetsRouteSetEnv = object;
+export type AdminAssetsRouteSetEnv = object;
 
-export type AssetsRouteGetEnv = object;
+export type AdminAssetsRouteGetEnv = object;
 
-export type AssetsRouteBindingsEnv = {
+export type AdminAssetsRouteBindingsEnv = {
   NEXUS_FILE_BUCKET: R2Bucket;
 };
 
-export class AssetsRoute extends Route<
+export class AdminAssetsRoute extends Route<
   VarsAndBindingsEnv<
-    AssetsRouteSetEnv,
-    AssetsRouteGetEnv,
-    AssetsRouteBindingsEnv
+    AdminAssetsRouteSetEnv,
+    AdminAssetsRouteGetEnv,
+    AdminAssetsRouteBindingsEnv
   >,
-  AssetsRouteSetEnv,
-  AssetsRouteGetEnv
+  AdminAssetsRouteSetEnv,
+  AdminAssetsRouteGetEnv
 > {
   setRoutePrefix(): string | null {
     return "/assets";
@@ -27,9 +27,9 @@ export class AssetsRoute extends Route<
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     app: Hono<
       VarsAndBindingsEnv<
-        AssetsRouteSetEnv,
-        AssetsRouteGetEnv,
-        AssetsRouteBindingsEnv
+        AdminAssetsRouteSetEnv,
+        AdminAssetsRouteGetEnv,
+        AdminAssetsRouteBindingsEnv
       >,
       BlankSchema,
       "/"

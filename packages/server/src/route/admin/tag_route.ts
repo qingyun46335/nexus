@@ -4,7 +4,7 @@ import { ErrFrom, Ok, Result } from "../../utils/result";
 import { VarsAndBindingsEnv } from "../route";
 import { RouteDocs } from "../route_docs";
 import { requestParamErrorValidator, RespMap } from "../../utils/response_mapping";
-import { TagService } from "../../service/admin/tag_service";
+import { AdminTagService } from "../../service/admin/tag_service";
 import { getDb } from "../../utils/sqlite";
 import { RequestParmError } from "../../error/error";
 
@@ -20,7 +20,7 @@ type AdminTagRouteBindingsEnv = {
 
 export class AdminTagRoute extends RouteDocs<VarsAndBindingsEnv<AdminTagRouteSetEnv, AdminTagRouteGetEnv, AdminTagRouteBindingsEnv>, AdminTagRouteSetEnv, AdminTagRouteGetEnv> {
 
-    private ts: TagService = new TagService()
+    private ts: AdminTagService = new AdminTagService()
 
     setRoutePrefix(): string | null {
         return "/tag"

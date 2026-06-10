@@ -3,7 +3,7 @@ import { BlankSchema } from "hono/types";
 import { Ok, Result } from "../../utils/result";
 import { VarsAndBindingsEnv } from "../route";
 import { RouteDocs } from "../route_docs";
-import { StatsService } from "../../service/admin/stats_service";
+import { AdminStatsService } from "../../service/admin/stats_service";
 import { getDb } from "../../utils/sqlite";
 
 
@@ -23,7 +23,7 @@ export class AdminStatsRoute extends RouteDocs<
     >, AdminStatsRouteSetEnv, AdminStatsRouteGetEnv
 > {
 
-    private ss = new StatsService();
+    private ss = new AdminStatsService();
 
     setRoutePrefix(): string | null {
         return "/stats";

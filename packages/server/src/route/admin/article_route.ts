@@ -3,7 +3,7 @@ import { BlankSchema } from "hono/types";
 import { Ok, Result } from "../../utils/result";
 import { VarsAndBindingsEnv } from "../route";
 import { RouteDocs } from "../route_docs";
-import { ArticleService } from "../../service/admin/article_service";
+import { AdminArticleService } from "../../service/admin/article_service";
 import { requestParamErrorValidator, RespMap } from "../../utils/response_mapping";
 import { MarkdownUtil } from "../../utils/markdown_util";
 import { getDb } from "../../utils/sqlite";
@@ -42,7 +42,7 @@ export class AdminArticleRoute extends RouteDocs<
   //     super(apiDocCollector, prefix);
   //   }
 
-  private ar: ArticleService = new ArticleService(new MarkdownUtil());
+  private ar: AdminArticleService = new AdminArticleService(new MarkdownUtil());
 
   setRoutePrefix(): string | null {
     return "/article";
