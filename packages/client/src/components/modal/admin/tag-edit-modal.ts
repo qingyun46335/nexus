@@ -72,7 +72,7 @@ export class TagEditModal extends ModalMixin(DaisyUIElement) {
         axiosi.get("/admin/tag/selectTags").then(res => {
             if (res.status === 200) {
                 const tags = res.data.value
-                this.editTags = tags.map(tag => ({ ...tag, isEditing: false }))
+                this.editTags = tags.map((tag: TagItem) => ({ ...tag, isEditing: false }))
             }
         })
     }
