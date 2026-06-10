@@ -118,6 +118,7 @@ export class AuthLitElement extends ToastWindowMixin(ErrorLitElement) {
             this._authStatus = "ok";
             return { status: res.status };
         } catch (e) {
+            // @ts-ignore
             const status = e.response?.status || 500;
             console.error("验证接口请求失败:", e);
 
