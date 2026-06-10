@@ -24,3 +24,5 @@ export const ErrFrom = <T>(
   message: string,
   cause?: Error,
 ): Result<T> => ({ v: null, e: new cls(message, cause), msg: message });
+
+export const to = <T>(promise: Promise<T>) => promise.then(data => ({ e: null, v: data })).catch(err => ({ e: err as Error, v: null }))
