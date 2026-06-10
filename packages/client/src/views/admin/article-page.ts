@@ -592,8 +592,8 @@ export class ArticlePage extends (AuthLitElement) {
   `;
 }
 
-declare global {
-  interface HTMLElementTagNameMap {
-    "article-page": ArticlePage;
-  }
-}
+// declare global {
+//   interface HTMLElementTagNameMap {
+//     "article-page": ArticlePage;
+//   }
+// }
