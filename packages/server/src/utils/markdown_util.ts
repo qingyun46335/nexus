@@ -2,13 +2,15 @@ import MarkdownIt, { Options } from "markdown-it";
 import { Token, Renderer } from "markdown-it/index.js";
 
 export type FileR2Path = {
-  assetImageMap: Record<string, string>;
-  attachmentMap: Record<string, string>;
-  mediaMap: Record<string, string>;
+  assetImageMap: Record<string, { id: string, url: string }>;
+  attachmentMap: Record<string, { id: string, url: string }>;
+  mediaMap: Record<string, { id: string, url: string }>;
 };
 
 export class MarkdownUtil {
   private md;
+
+  private mapingResult: string[] = []
 
   constructor() {
     this.md = new MarkdownIt({
@@ -46,7 +48,8 @@ export class MarkdownUtil {
         normalizedSrc.endsWith(k),
       );
       if (matchedKey) {
-        token.attrSet("src", assetImageMap[matchedKey]);
+        this.mapingResult.push(assetImageMap[matchedKey].id)
+        token.attrSet("src", assetImageMap[matchedKey].url);
       }
 
       return defaultImageRenderer(tokens, idx, options, env, self);
@@ -81,7 +84,8 @@ export class MarkdownUtil {
         normalizedHref.endsWith(k),
       );
       if (matchedKey) {
-        token.attrSet("href", attachmentMap[matchedKey]);
+        this.mapingResult.push(attachmentMap[matchedKey].id)
+        token.attrSet("href", attachmentMap[matchedKey].url);
       }
 
       return defaultLinkRenderer(tokens, idx, options, env, self);
@@ -124,7 +128,7 @@ export class MarkdownUtil {
   process(
     md: string,
     env: FileR2Path,
-  ): { title: string; description: string; html: string } {
+  ): { title: string; description: string; html: string, map: string[] } {
     const { title, description } = this.extractMeta(md);
 
     const processedEnv = {
@@ -136,7 +140,9 @@ export class MarkdownUtil {
     const rawHtml = this.md.render(md, processedEnv);
     const html = this.replaceMediaSrc(rawHtml, processedEnv.mediaMap);
 
-    return { title, description, html };
+    const mr = this.mapingResult
+
+    return { title, description, html, map: mr };
   }
 
   /**
@@ -145,7 +151,7 @@ export class MarkdownUtil {
  */
   private replaceMediaSrc(
     html: string,
-    mediaMap: Record<string, string>,
+    mediaMap: Record<string, { id: string, url: string }>,
   ): string {
     if (Object.keys(mediaMap).length === 0) return html;
 
@@ -157,8 +163,11 @@ export class MarkdownUtil {
         const matchedKey = Object.keys(mediaMap).find((k) =>
           normalizedSrc.endsWith(k),
         );
+        if (matchedKey) {
+          this.mapingResult.push(mediaMap[matchedKey].id)
+        }
         return matchedKey
-          ? `${before}${mediaMap[matchedKey]}${after}`
+          ? `${before}${mediaMap[matchedKey].url}${after}`
           : match;
       },
     );
@@ -175,8 +184,8 @@ export class MarkdownUtil {
  * 输出：{ 'a.png': 'uuid-a.png', 'b.png': 'uuid-b.png' }
  */
 export function extractFeatureKeys(
-  map: Record<string, string>,
-): Record<string, string> {
+  map: Record<string, { id: string, url: string }>,
+): Record<string, { id: string, url: string }> {
   const keys = Object.keys(map);
   if (keys.length === 0) return {};
 
@@ -204,7 +213,7 @@ export function extractFeatureKeys(
   const cutLen = lastSlash >= 0 ? lastSlash + 1 : prefixLen;
 
   // 4. 裁剪，重建 map
-  const result: Record<string, string> = {};
+  const result: Record<string, { id: string, url: string }> = {};
   for (let i = 0; i < keys.length; i++) {
     const featureKey = normalizedKeys[i].slice(cutLen);
     result[featureKey] = map[keys[i]];
