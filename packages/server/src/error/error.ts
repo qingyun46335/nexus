@@ -72,10 +72,46 @@ export class KVCacheError extends BaseError {
   }
 }
 
+export class DBError extends BaseError {
+  type: string = "DBError"
+  constructor(message = "数据库错误", cause?: Error) {
+    super(message, cause)
+  }
+}
+
+export class BUCKETError extends BaseError {
+  type: string = "BUCKETError"
+  constructor(message = "r2存储错误", cause?: Error) {
+    super(message, cause)
+  }
+}
+
 export class CustomError extends BaseError {
   type: string = "CustomError";
   constructor(message = "未知异常", cause?: Error) {
     super(message, cause);
+  }
+}
+
+// 业务错误
+export class ContentNotFoundBusinessError extends BaseError {
+  type: string = "ContentNotFoundBusinessError";
+  constructor(message = "文章为空", cause?: Error) {
+    super(message, cause);
+  }
+}
+
+export class StorageCorruptedError extends BaseError {
+  type: string = "StorageCorruptedError"
+  constructor(message = "存储损坏", cause?: Error) {
+    super(message, cause)
+  }
+}
+
+export class DataError extends BaseError {
+  type: string = "DataError"
+  constructor(message = "数据异常", cause?: Error) {
+    super(message, cause)
   }
 }
 
