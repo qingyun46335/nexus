@@ -12,6 +12,7 @@ import '../modal/admin/image-preview-modal'
 import '../modal/admin/audio-preview-modal'
 import '../modal/admin/video-preview-modal'
 import '../modal/admin/admin_article_edit_modal'
+import { formatFileSize } from '../../utils/file_util';
 
 // @customElement("article-table")
 // export class ArticleTable extends DaisyUIElement {
@@ -212,7 +213,8 @@ export class ArticleTable extends DaisyUIElement {
         const articleStatusElementMap: Record<string, TemplateResult> = {
             published: html`<span class="badge badge-success badge-sm md:badge-md">已发布</span>`,
             draft: html`<span class="badge badge-warning badge-sm md:badge-md">草稿</span>`,
-            archived: html`<span class="badge badge-secondary badge-sm md:badge-md">已归档</span>`
+            archived: html`<span class="badge badge-secondary badge-sm md:badge-md">已归档</span>`,
+            hide: html`<span class="badge badge-primary-content badge-sm md:badge-md">隐藏</span>`
         };
 
         return html`
@@ -270,6 +272,7 @@ export class ArticleTable extends DaisyUIElement {
                                                 <th class="whitespace-nowrap">文件名</th>
                                                 <th>预览</th>
                                                 <th class="hidden sm:table-cell">大小</th>
+                                                <th class=" md:table-cell">存放位置</th>
                                                 <th class="hidden md:table-cell">后缀</th>
                                                 <th class="hidden lg:table-cell">相对路径</th>
                                                 <th class="text-right">操作</th>
@@ -284,13 +287,17 @@ export class ArticleTable extends DaisyUIElement {
                                                         <iconify-icon height="24" icon="${iconCompute(file.suffix.toLowerCase())}"></iconify-icon>
                                                     </button>
                                                 </td>
-                                                <td class="hidden sm:table-cell text-xs">${file.size}</td>
+                                                <td class="hidden sm:table-cell text-xs">${formatFileSize(Number(file.size))}</td>
+                                                <td class=" md:table-cell">
+                                                    ${this.displayType(file.showInArticle, file.showInAttachment)}
+                                                </td>
                                                 <td class="hidden md:table-cell">
                                                     <span class="badge badge-outline badge-sm">${file.suffix}</span>
                                                 </td>
                                                 <td class="hidden lg:table-cell text-xs opacity-60 font-mono">${file.relativePath}</td>
                                                 <td class="text-right">
-                                                    <button class="btn btn-xs btn-error btn-outline" @click=${() => this._deleteArticleFile(article.id, file.id)}>删除</button>
+                                                    <button class="btn btn-xs btn-primary btn-outline" @click=${() => this.editArticleFile(article.id, file.id)}>edit</button>
+                                                    <button class="btn btn-xs btn-error btn-outline" @click=${() => this._deleteArticleFile(article.id, file.id)}>delete</button>
                                                 </td>
                                             </tr>
                                             `)}
@@ -323,6 +330,22 @@ export class ArticleTable extends DaisyUIElement {
     ${this.audioPreviewModalOpen ? html`<audio-preview-modal .path=${this.selectedFilePath} ?isOpen=${this.audioPreviewModalOpen} @modal-closed=${() => this.audioPreviewModalOpen = false}></audio-preview-modal>` : nothing}
     ${this.videoPreviewModalOpen ? html`<video-preview-modal .path=${this.selectedFilePath} ?isOpen=${this.videoPreviewModalOpen} @modal-closed=${() => this.videoPreviewModalOpen = false}></video-preview-modal>` : nothing}
         `;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    editArticleFile(_id: string, _id1: string) {
+        throw new Error('Method not implemented.');
+    }
+
+    displayType(showInArticle: number, showInAttachment: number) {
+        if (showInAttachment === 1 && showInArticle === 0) {
+            return html`<span class="badge badge-outline badge-sm badge-warning">附件区</span>`
+        } else if (showInArticle === 1 && showInAttachment === 0) {
+            return html`<span class="badge badge-outline badge-sm badge-info">文件中</span>`
+        } else if (showInAttachment === 1 && showInArticle === 1) {
+            return html`<span class="badge badge-outline badge-sm badge-primary">全都有</span>`
+        } else if (showInAttachment === 0 && showInArticle === 0) {
+            return html`<span class="badge badge-outline badge-sm badge-error">未指定</span>`
+        }
     }
 
     // ... 原有逻辑方法保持不变 (previewFile, LoadingFilesForArticle, _deleteArticleFile, 等)
@@ -498,6 +521,7 @@ const suffixIconMap: Record<string, string> = {
     svg: "svg",
     ico: "favicon",
     bmp: "image",
+    jfif: "image",
 
     // ===== Audio =====
     mp3: "audio",
