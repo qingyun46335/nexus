@@ -14,6 +14,8 @@ export type Article = {
 
 }
 
+export type Usage = "content" | "attachment" | "not_specified"
+
 export type ArticleFile = {
     id: string,
     uuid: string,
@@ -27,6 +29,7 @@ export type ArticleFile = {
     filePath: string,
     relativePath: string,
     articleId: string,
+    usage: Usage,
 }
 
 export type UpdArticleInfor = {
