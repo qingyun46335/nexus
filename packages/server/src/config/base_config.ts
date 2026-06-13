@@ -3,6 +3,11 @@ export const AssetsConfig = {
   CLIENT_FILE_PATH_PREFIX: "/api/client/assets", //  完整路径：/api/client/assets/ + 文件大类 + / + uuid名称
 };
 
+export const KVConfig = {
+  timeout: { expirationTtl: 3600 }
+}
+
 export const BaseConfig = {
   assets: AssetsConfig,
+  kv: KVConfig,
 };
