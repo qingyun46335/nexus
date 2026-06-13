@@ -272,6 +272,7 @@ export class ArticleTable extends DaisyUIElement {
                                                 <th class="whitespace-nowrap">文件名</th>
                                                 <th>预览</th>
                                                 <th class="hidden sm:table-cell">大小</th>
+                                                <th class="hidden md:table-cell">用途</th>
                                                 <th class=" md:table-cell">存放位置</th>
                                                 <th class="hidden md:table-cell">后缀</th>
                                                 <th class="hidden lg:table-cell">相对路径</th>
@@ -288,6 +289,9 @@ export class ArticleTable extends DaisyUIElement {
                                                     </button>
                                                 </td>
                                                 <td class="hidden sm:table-cell text-xs">${formatFileSize(Number(file.size))}</td>
+                                                <td class="hidden md:table-cell">
+                                                    ${this.usageCompute(file.usage)}
+                                                </td>
                                                 <td class=" md:table-cell">
                                                     ${this.displayType(file.showInArticle, file.showInAttachment)}
                                                 </td>
@@ -334,6 +338,14 @@ export class ArticleTable extends DaisyUIElement {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     editArticleFile(_id: string, _id1: string) {
         throw new Error('Method not implemented.');
+    }
+
+    usageCompute(usage: string): unknown {
+        switch (usage) {
+            case "content": return "主要内容"
+            case "attachment": return "文章附件"
+            case "not_specified": return "未指定"
+        }
     }
 
     displayType(showInArticle: number, showInAttachment: number) {
@@ -420,7 +432,7 @@ export class ArticleTable extends DaisyUIElement {
     private _deleteArticleFile(_id: string, _id1: string) {
         throw new Error('Method not implemented.');
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     _editArticle(_id: string) {
         this.editArticle = true
         this.editArticleId = (_id ? _id : "")
