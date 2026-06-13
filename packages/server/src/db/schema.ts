@@ -28,6 +28,7 @@ export const articleFile = sqliteTable("article_file", {
   filePath: text("file_path").notNull(),
   relativePath: text("relative_path").notNull(),
   articleId: text("article_id").notNull(),
+  usage: text("usage").$type<"content" | "attachment" | "not_specified">().notNull(),
 })
 
 export const tag = sqliteTable("tag", {
@@ -42,4 +43,13 @@ export const articleToTag = sqliteTable("article_to_tag", {
   id: text("id").primaryKey(),
   articleId: text("article_id").notNull(),
   tagId: text("tag_id").notNull(),
+})
+
+export const friendLink = sqliteTable("friend_link", {
+  id: integer("id").primaryKey(),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  avatar: text("avatar").notNull(),
+  description: text("description").notNull(),
+  author: text("author").notNull(),
 })
