@@ -1,7 +1,7 @@
 import { DrizzleD1Database } from "drizzle-orm/d1"
 import * as schema from "../../db/schema";
 import { ErrFrom, Ok, Result, to } from "../../utils/result";
-import { Adjacent, AdjacentArticle, ArticleClientDetailVo, ArticleClientVo, RecommendedArticle } from "../../type/article";
+import { Adjacent, ArticleClientDetailVo, ArticleClientVo, RecommendedArticle } from "../../type/article";
 import { and, asc, count, desc, eq, ne, sql } from "drizzle-orm";
 import { BUCKETError, ContentNotFoundBusinessError, CustomError, DataError, DBError, StorageCorruptedError } from "../../error/error";
 import { article } from "../../db/schema";
