@@ -11,7 +11,13 @@ if (token) {
 }
 
 axiosi.interceptors.response.use(
-    response => response,
+    response => {
+        if (window.toast && window.toast.success) {
+            window.toast.success(`✓ ${response.status}`)
+        }
+
+        return response
+    },
     error => {
         const url = error.config?.url ?? "";
 
@@ -19,6 +25,11 @@ axiosi.interceptors.response.use(
             window.toast.warning("登录已失效")
         } else if (error.response?.status === 403 && url.startsWith("/api/admin")) {
             window.toast.error("权限不足")
+        }
+        if (window.toast && window.toast.error) {
+            const msg = error.response?.status ? error.response.status : "Request failed"
+
+            window.toast.error(msg)
         }
 
         return Promise.reject(error)
