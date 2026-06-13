@@ -104,7 +104,6 @@ export class AuthLitElement extends ToastWindowMixin(ErrorLitElement) {
     private async _verifyToken(): Promise<{ status: number }> {
         const token = localStorage.getItem('token');
         if (!token) {
-            console.warn("未找到 token，用户未认证");
             this._authStatus = 'unauth';
             // 没有 token 属于已知校验失败，抛出错误让外层 catch 捕获
             throw { status: 401 };
@@ -112,7 +111,6 @@ export class AuthLitElement extends ToastWindowMixin(ErrorLitElement) {
 
         try {
             const res = await axiosi.get(this.verifyEndpoint);
-            console.log("验证接口响应:", res);
 
             // 200 成功情况
             this._authStatus = "ok";
@@ -120,7 +118,6 @@ export class AuthLitElement extends ToastWindowMixin(ErrorLitElement) {
         } catch (e) {
             // @ts-ignore
             const status = e.response?.status || 500;
-            console.error("验证接口请求失败:", e);
 
             // 根据状态码更新状态
             switch (status) {
