@@ -12,6 +12,7 @@ export interface ModuleCard {
 
 const MODULES: ModuleCard[] = [
   { title: "博客", description: "文章、随笔与技术分析", icon: "ti-notebook", link: "/pages/home", status: "ready" },
+  { title: "博客后台", description: "博客管理", link: "/pages/admin", status: "ready" }
   // { title: "归档", description: "按时间线浏览所有内容", icon: "ti-calendar", link: "/pages/archive", status: "ready" },
   // { title: "项目", description: "我正在构建的东西", icon: "ti-code", link: "/pages/projects", status: "wip" },
   // { title: "读书", description: "书摘与思考记录", icon: "ti-book", link: "/pages/reading", status: "wip" },
