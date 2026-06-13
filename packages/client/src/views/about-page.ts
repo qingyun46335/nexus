@@ -2,6 +2,7 @@ import { html, css, } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import axios from 'axios';
 import { DaisyUIElement } from '../components/daisy-ui-element';
+import { styleMap } from 'lit/directives/style-map.js';
 
 interface FriendLink {
   id: number;
@@ -299,8 +300,18 @@ export class AboutPage extends DaisyUIElement {
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
+  private loadingLightOrDark() {
+    const dark = window.localStorage.getItem("data-theme")
+    if (dark && dark === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark")
+    } else {
+      document.documentElement.setAttribute("data-theme", "light")
+    }
+  }
+
   connectedCallback() {
     super.connectedCallback();
+    this.loadingLightOrDark()
 
     // 读取当前主题
     this.isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -349,6 +360,7 @@ export class AboutPage extends DaisyUIElement {
   private toggleTheme = () => {
     const next = this.isDarkMode ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
+    window.localStorage.setItem("data-theme", this.isDarkMode ? 'light' : 'dark')
     // MutationObserver 会自动更新 isDarkMode
   };
 
@@ -550,6 +562,7 @@ export class AboutPage extends DaisyUIElement {
   // ── render ─────────────────────────────────────────────────────────────────
 
   render() {
+    const bg_image = { "background-image": this.isDarkMode ? `url('/../../../public/Image_00_02_00.png')` : `url('/../../../public/Image_m8xtbtm8xtbtm8xt.png')` }
     return html`
 
         <div style="
@@ -558,7 +571,7 @@ export class AboutPage extends DaisyUIElement {
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-image: url('/../../../public/Image_00_02_00.png');
+        ${styleMap(bg_image)}
         background-repeat: no-repeat;
         background-size: cover;
         background-position: center;

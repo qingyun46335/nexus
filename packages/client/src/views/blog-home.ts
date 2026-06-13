@@ -118,6 +118,7 @@ export class BlogHome extends DaisyUIElement {
 
     async connectedCallback() {
         super.connectedCallback();
+        this.loadingLightOrDark()
         this._syncTheme();
         window.matchMedia('(prefers-color-scheme: dark)')
             .addEventListener('change', () => this._syncTheme());
@@ -131,6 +132,15 @@ export class BlogHome extends DaisyUIElement {
         ]);
     }
 
+    private loadingLightOrDark() {
+        const dark = window.localStorage.getItem("data-theme")
+        if (dark && dark === "dark") {
+            document.documentElement.setAttribute("data-theme", "dark")
+        } else {
+            document.documentElement.setAttribute("data-theme", "light")
+        }
+    }
+
     private _syncTheme() {
         const el = document.documentElement;
         if (!el.getAttribute('data-theme')) {
@@ -141,7 +151,9 @@ export class BlogHome extends DaisyUIElement {
 
     toggleTheme() {
         const el = document.documentElement;
+        window.localStorage.setItem("data-theme", el.getAttribute('data-theme') === 'dark' ? 'light' : 'dark')
         el.setAttribute('data-theme', el.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+
         this.requestUpdate();
     }
 
@@ -838,8 +850,9 @@ export class BlogHome extends DaisyUIElement {
     // ── 主渲染 ─────────────────────────────────────────
 
     render() {
+        const bg_image = { "background-image": this.isDarkMode ? `url('/../../../public/Image_00_02_00.png')` : `url('/../../../public/Image_m8xtbtm8xtbtm8xt.png')` }
         return html`
-        <div  style="background-image: url('/../../../public/Image_00_02_00.png'); background-repeat: no-repeat; background-size: cover;" class="flex flex-col min-h-screen text-base-content transition-colors duration-300">
+        <div  style="${styleMap(bg_image)} background-repeat: no-repeat; background-size: cover;" class="flex flex-col min-h-screen text-base-content transition-colors duration-300">
 
             ${this._renderNavbar()}
             <!-- ${this._renderStatsBar()} -->

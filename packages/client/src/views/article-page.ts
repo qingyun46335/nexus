@@ -6,6 +6,7 @@ import { marked, Renderer } from "marked";
 import hljs from "highlight.js";
 import { getUrlParam } from "../utils/url_util";
 import { DaisyUIElement } from "../components/daisy-ui-element";
+import { styleMap } from "lit/directives/style-map.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -306,9 +307,19 @@ export class ArticlePage extends DaisyUIElement {
   // Lifecycle
   // ─────────────────────────────────────────────────────────────────────────
 
+  private loadingLightOrDark() {
+    const dark = window.localStorage.getItem("data-theme")
+    if (dark && dark === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark")
+    } else {
+      document.documentElement.setAttribute("data-theme", "light")
+    }
+  }
+
   connectedCallback() {
     super.connectedCallback();
     this._injectStyles();
+    this.loadingLightOrDark()
 
     this._isDark = document.documentElement.getAttribute("data-theme") !== "light";
     new MutationObserver(() => {
@@ -812,6 +823,7 @@ export class ArticlePage extends DaisyUIElement {
   private _toggleTheme() {
     const next = this._isDark ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
+    window.localStorage.setItem("data-theme", this._isDark ? 'light' : 'dark')
     this._isDark = !this._isDark;
   }
 
@@ -863,7 +875,8 @@ export class ArticlePage extends DaisyUIElement {
   private _renderNavbar() {
     return html`
       <header class="sticky top-0 z-50 flex items-center gap-3 px-4 lg:px-8 h-14
-                     nexus-glass-heavy border-b transition-colors duration-300">
+                     bg-base-100/70 backdrop-blur-md border-b border-base-content/8
+                     transition-colors duration-300">
         <a href="/pages/home" class="font-mono font-bold text-base tracking-widest
                            text-base-content mr-2 flex-shrink-0 hover:text-primary transition-colors">
           NEXUS-BLOG
@@ -1378,6 +1391,7 @@ export class ArticlePage extends DaisyUIElement {
   // ─────────────────────────────────────────────────────────────────────────
 
   render() {
+    const bg_image = { "background-image": this._isDark ? `url('/../../../public/Image_00_02_00.png')` : `url('/../../../public/Image_m8xtbtm8xtbtm8xt.png')` }
     return html`
       <!-- Progress bar -->
       <div class="nexus-reading-progress" style="width:${this._readingProgress}%"></div>
@@ -1388,7 +1402,7 @@ export class ArticlePage extends DaisyUIElement {
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-image: url('/../../../public/Image_00_02_00.png');
+        ${styleMap(bg_image)}
         background-repeat: no-repeat;
         background-size: cover;
         background-position: center;
