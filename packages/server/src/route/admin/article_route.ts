@@ -3,7 +3,7 @@ import { BlankSchema } from "hono/types";
 import { Ok, Result } from "../../utils/result";
 import { VarsAndBindingsEnv } from "../route";
 import { RouteDocs } from "../route_docs";
-import { AdminArticleService } from "../../service/admin/article_service";
+import { AdminArticleService, UsageIdMap } from "../../service/admin/article_service";
 import { requestParamErrorValidator, RespMap } from "../../utils/response_mapping";
 import { MarkdownUtil } from "../../utils/markdown_util";
 import { getDb } from "../../utils/sqlite";
@@ -245,6 +245,49 @@ export class AdminArticleRoute extends RouteDocs<
     });
 
     r.setDocsMethod(app => {
+      app.post("/contentClassify", async c => {
+        const body = await c.req.parseBody();
+        const articleId = body.articleId as string
+        const usageMode = body.usageMode
+        const usage = usageMode && usageMode === "1" ? true : false
+        const uimString = body.uim
+
+        const resp = requestParamErrorValidator({ articleId });
+
+        if (resp) {
+          return c.newResponse(JSON.stringify(resp.body), resp.status);
+        }
+
+        const uim = JSON.parse(uimString as string) as UsageIdMap
+
+        const res = RespMap(
+          await this.ar.contentClassify(getDb(c.env), articleId, usage, uim)
+        )
+
+        return c.json(res?.body, res?.status);
+      })
+    })
+
+    r.setDocsMethod(app => {
+      app.get("/parseMarkdown", async c => {
+        const body = c.req.query();
+        const articleId = body.articleId
+
+        const resp = requestParamErrorValidator({ articleId });
+
+        if (resp) {
+          return c.newResponse(JSON.stringify(resp.body), resp.status);
+        }
+
+        const res = RespMap(
+          await this.ar.parseMarkdown(getDb(c.env), c.env.NEXUS_FILE_BUCKET, articleId)
+        )
+
+        return c.json(res?.body, res?.status);
+      })
+    })
+
+    r.setDocsMethod(app => {
       app.get("/getArticle", async c => {
         const body = c.req.query();
         const articleId = body.articleId
@@ -301,6 +344,44 @@ export class AdminArticleRoute extends RouteDocs<
         articleId: "文章id",
       }
       return ad
+    })
+
+    r.setDocsMethod(app => {
+      app.get("/getArticleFilesByArticleId", async c => {
+        const body = c.req.query();
+        const articleId = body.articleId
+
+        const resp = requestParamErrorValidator({ articleId });
+
+        if (resp) {
+          return c.newResponse(JSON.stringify(resp.body), resp.status);
+        }
+
+        const res = RespMap(
+          await this.ar.getArticleFilesByArticleId(getDb(c.env), articleId)
+        )
+
+        return c.json(res?.body, res?.status)
+      })
+    })
+
+    r.setDocsMethod(app => {
+      app.get("/parseMarkdownStatus", async c => {
+        const body = c.req.query();
+        const articleId = body.articleId
+
+        const resp = requestParamErrorValidator({ articleId });
+
+        if (resp) {
+          return c.newResponse(JSON.stringify(resp.body), resp.status);
+        }
+
+        const res = RespMap(
+          await this.ar.parseMarkdownStatus(getDb(c.env), articleId)
+        )
+
+        return c.json(res?.body, res?.status)
+      })
     })
   }
 }
