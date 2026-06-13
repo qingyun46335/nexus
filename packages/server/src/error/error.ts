@@ -115,6 +115,20 @@ export class DataError extends BaseError {
   }
 }
 
+export class DataFormatInvalidError extends BaseError {
+  type: string = "DataFormatInvalidError"
+  constructor(message = "数据格式异常", cause?: Error) {
+    super(message, cause)
+  }
+}
+
+export class StatusValidateError extends BaseError {
+  type: string = "StatusValidateError"
+  constructor(message = "状态校验错误", cause?: Error) {
+    super(message, cause)
+  }
+}
+
 // 使用示例
 // 1. 直接创建
 // const r1 = Err<string>(new ValidationError("手机号格式错误"));

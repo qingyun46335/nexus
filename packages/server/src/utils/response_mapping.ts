@@ -5,9 +5,11 @@ import {
   ContentNotFoundBusinessError,
   CustomError,
   DataError,
+  DataFormatInvalidError,
   DBError,
   KVCacheError,
   RequestParmError,
+  StatusValidateError,
   StorageCorruptedError,
   ValidationError,
 } from "../error/error";
@@ -78,6 +80,19 @@ export const RespMap = ResponseMapping(
     map: (err: BaseError) => {
       return { status: 200, body: { code: 351, msg: err.message } }
     }
+  },
+
+  {
+    type: new DataFormatInvalidError().type,
+    map: (err: BaseError) => {
+      return { status: 200, body: { code: 352, msg: err.message } }
+    }
+  },
+  {
+    type: new StatusValidateError().type,
+    map(err) {
+      return { status: 200, body: { code: 401, msg: err.message } }
+    },
   },
 
 
