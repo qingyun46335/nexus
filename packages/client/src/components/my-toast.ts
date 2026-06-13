@@ -45,7 +45,7 @@ export class MyToast extends DaisyUIElement {
 
   /** 最大显示数量，超出后自动移除最早的消息 */
   @property({ type: Number, attribute: "max-count" })
-  maxCount = 5;
+  maxCount = 3;
 
   /** 是否启用队列模式：true=超出后入队等待，false=超出后直接丢弃最早的 */
   @property({ type: Boolean, attribute: "queue-mode" })
