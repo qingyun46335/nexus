@@ -122,6 +122,20 @@ export class DataFormatInvalidError extends BaseError {
   }
 }
 
+export class DataValidateError extends BaseError {
+  type: string = "DataValidateError"
+  constructor(message = "数据校验异常", cause?: Error) {
+    super(message, cause)
+  }
+}
+
+export class DataNotFindError extends BaseError {
+  type: string = "DataNotFindError"
+  constructor(message = "数据不存在", cause?: Error) {
+    super(message, cause)
+  }
+}
+
 export class StatusValidateError extends BaseError {
   type: string = "StatusValidateError"
   constructor(message = "状态校验错误", cause?: Error) {

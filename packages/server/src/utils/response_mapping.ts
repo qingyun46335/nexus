@@ -6,7 +6,10 @@ import {
   CustomError,
   DataError,
   DataFormatInvalidError,
+  DataNotFindError,
+  DataValidateError,
   DBError,
+  DBNotFindError,
   KVCacheError,
   RequestParmError,
   StatusValidateError,
@@ -87,6 +90,18 @@ export const RespMap = ResponseMapping(
     map: (err: BaseError) => {
       return { status: 200, body: { code: 352, msg: err.message } }
     }
+  },
+  {
+    type: new DataValidateError().type,
+    map(err) {
+      return { status: 200, body: { code: 353, msg: err.message } }
+    },
+  },
+  {
+    type: new DataNotFindError().type,
+    map(err) {
+      return { status: 200, body: { code: 354, msg: err.message } }
+    },
   },
   {
     type: new StatusValidateError().type,
