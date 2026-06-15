@@ -53,3 +53,15 @@ export const friendLink = sqliteTable("friend_link", {
   description: text("description").notNull(),
   author: text("author").notNull(),
 })
+
+export const comment = sqliteTable("comment", {
+  id: text("id").primaryKey(),
+  content: text("content").notNull(),
+  authorName: text("author_name").notNull(),
+  authorEmail: text("author_email").notNull(),
+  createdAt: text("created_at").notNull(),
+  replyTo: text("reply_to"),
+  replyToId: text("reply_to_id"),
+  deleted: integer("deleted").notNull(),
+  parentId: text("parent_id"),
+})
