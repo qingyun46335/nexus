@@ -1,8 +1,13 @@
 import { html, css, } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, query, state } from 'lit/decorators.js';
 import axios from 'axios';
 import { DaisyUIElement } from '../components/daisy-ui-element';
 import { styleMap } from 'lit/directives/style-map.js';
+import type { NexusComment } from '../components/comment/nexus-comment';
+import type { CommentSubmitPayload, NewSubComment, NewTopComment, PagedResult, SubComment, TopCommentString } from '../type/comment-types';
+
+import '../components/comment/nexus-comment'
+import axiosi from '../utils/axios';
 
 interface FriendLink {
   id: number;
@@ -42,12 +47,10 @@ export class AboutPage extends DaisyUIElement {
   @state() private friendsLoading = true;
   @state() private friendsError = false;
 
-  // waline 实例销毁函数
-  private _walineDestroy: (() => void) | null = null;
   // MutationObserver 监听主题变化
   private _themeObserver: MutationObserver | null = null;
-  // waline 挂载容器（light DOM）
-  private _walineContainer: HTMLElement | null = null;
+
+  @query('nexus-comment') private _commentEl!: NexusComment
 
   // ── Static styles（shadow DOM 内部，仅控制 host 布局和自定义部分）────────
   static defaultStyles = css`
@@ -333,21 +336,18 @@ export class AboutPage extends DaisyUIElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._themeObserver?.disconnect();
-    this._walineDestroy?.();
-    // 移除 light DOM 中的 waline 容器
-    this._walineContainer?.remove();
   }
 
   firstUpdated() {
-    this._initWaline();
+
   }
 
   // ── 数据获取 ────────────────────────────────────────────────────────────────
 
   private async _fetchFriends() {
     try {
-      const res = await axios.get<{ data: FriendLink[] }>('/app/friends');
-      this.friends = res.data.data;
+      const res = await axiosi.get<{ value: FriendLink[] }>('/client/about/getFriends');
+      this.friends = res.data.value;
     } catch {
       this.friendsError = true;
     } finally {
@@ -365,77 +365,62 @@ export class AboutPage extends DaisyUIElement {
   };
 
   private _syncWalineTheme(dark: boolean) {
-    if (!this._walineContainer) return;
-    if (dark) {
-      this._walineContainer.classList.add('dark');
-    } else {
-      this._walineContainer.classList.remove('dark');
-    }
+
   }
 
-  // ── Waline 初始化 ──────────────────────────────────────────────────────────
-  //
-  // Waline 通过全局 CDN 加载（在 HTML 模板里引入）：
-  //   <script src="https://unpkg.com/@waline/client@v3/dist/waline.js"></script>
-  //   <link  rel="stylesheet" href="https://unpkg.com/@waline/client@v3/dist/waline.css"/>
-  //
-  // 因为 shadow DOM 会隔离全局样式，我们把 waline 容器挂到 <body>，
-  // 并通过 CSS 变量覆盖让它跟随 DaisyUI 主题。
-  //
-  // 若项目改用 npm 引入，把下面的 (window as any).Waline.init
-  // 替换成 import { init } from '@waline/client' 即可，其余不变。
-
-  private _initWaline() {
-    // 找到 shadow root 内的占位元素，获取其在页面上的位置
-    const slot = this.shadowRoot?.getElementById('waline-slot');
-    if (!slot) return;
-
-    // 创建 light DOM 容器，fixed/absolute 跟随 slot 位置
-    // 实际项目中更常见做法：直接用 document.getElementById 的外部 div
-    // 这里用最简单的：把容器 append 到 body，样式由外部 CSS 控制位置
-    // ——更推荐方式：在 HTML 模板里预留 <div id="waline-portal"></div>
-    //   然后这里直接 document.getElementById('waline-portal')
-
-    let portal = document.getElementById('waline-portal') as HTMLElement | null;
-    if (!portal) {
-      portal = document.createElement('div');
-      portal.id = 'waline-portal';
-      document.body.appendChild(portal);
+  private async _onLoadTopPage(e: CustomEvent) {
+    const { page, pageSize } = e.detail as {
+      page: number; pageSize: number
     }
-    this._walineContainer = portal;
+    const res = await axiosi.get<{ value: PagedResult<TopCommentString> }>(`/client/comment/getTopComments?page=${page}&pageSize=${pageSize}`)
+    const items = res.data.value.items.map(item => {
+      return {
+        id: item.id,
+        content: item.content,
+        authorName: item.authorName,
+        authorEmail: item.authorEmail,
+        createdAt: item.createdAt,
+        replyCount: item.replyCount,             // 子评论总数，用于子楼分页
+        replies: JSON.parse(item.replies),          // 默认前 N 条
+        deleted: item.deleted
+      }
+    })
+    this._commentEl.setTopPage({
+      items: items,
+      total: res.data.value.total,
+      page: res.data.value.page,
+      pageSize: res.data.value.pageSize,
+    })
+  }
 
-    // 深色模式初始同步
-    this._syncWalineTheme(this.isDarkMode);
-
-    // 初始化 Waline
-    // 若通过 CDN 引入：
-    const W = (window as any).Waline;
-    if (!W) {
-      console.warn('[about-page] Waline global not found. Make sure CDN script is loaded.');
-      return;
+  private async _onLoadSubPage(e: CustomEvent) {
+    const { parentId, page, pageSize } = e.detail as {
+      parentId: string; page: number; pageSize: number
     }
+    const res = await axiosi.get<{ value: PagedResult<SubComment> }>(`/client/comment/getSubComments?parentId=${parentId}&page=${page}&pageSize=${pageSize}`)
+    this._commentEl.setSubPage(parentId, res.data.value)
+  }
 
-    const instance = W.init({
-      el: portal,
-      // ⚠️ 替换为你的 Waline 后端地址（Hono 服务挂载的路径）
-      serverURL: '/api/comment',
-      // 路径区分页面，about 固定
-      path: '/about',
-      // 深色模式：Waline 检测容器上的 .dark class
-      dark: '.dark',
-      // 语言
-      lang: 'zh-CN',
-      // 关闭 emoji（保持简洁风格），按需开启
-      emoji: false,
-      // 评论字数上限
-      wordLimit: 500,
-      // 分页
-      pageSize: 20,
-      // 允许 Markdown
-      texRenderer: false,
-    });
+  private async _onCommentSubmit(e: CustomEvent) {
+    const payload = e.detail as CommentSubmitPayload
 
-    this._walineDestroy = () => instance?.destroy?.();
+    const form = new FormData()
+
+    form.append("comment", JSON.stringify(payload))
+
+    try {
+      if (payload.parentId !== undefined) {
+        const res = await axiosi.post<{ value: NewSubComment }>('/client/comment/addComment', form)
+        this._commentEl.addSubComment(res.data.value)
+      } else {
+        const res = await axiosi.post<{ value: NewTopComment }>('/client/comment/addComment', form)
+        this._commentEl.addTopComment(res.data.value)
+      }
+    } catch (err) {
+      console.error('发表评论失败', err)
+      this._commentEl.submitError()
+      // 在这里展示 toast 提示失败
+    }
   }
 
   // ── 友链渲染 ───────────────────────────────────────────────────────────────
@@ -559,6 +544,19 @@ export class AboutPage extends DaisyUIElement {
       </footer>`;
   }
 
+  renderComment() {
+    return html`
+      <nexus-comment
+        article-id="${0}"
+        top-page-size="10"
+        sub-page-size="5"
+        @load-top-page=${this._onLoadTopPage}
+        @load-sub-page=${this._onLoadSubPage}
+        @comment-submit=${this._onCommentSubmit}
+      ></nexus-comment>
+    `
+  }
+
   // ── render ─────────────────────────────────────────────────────────────────
 
   render() {
@@ -621,89 +619,14 @@ export class AboutPage extends DaisyUIElement {
 
         <div class="divider-line"><hr /></div>
 
-        <!-- ③ 评论区占位（Waline 挂到 light DOM，见 _initWaline） -->
-        <section class="comment-section">
+        <section class=" comment-section">
           <div class="section-header">// comments</div>
-          <!--
-            Waline 容器不在 shadow DOM 内，而是挂到 <body> 的 #waline-portal。
-            在你的 HTML 模板（index.html 或 about.html）里需要：
-
-            1. 在 <head> 引入 Waline：
-               <link rel="stylesheet" href="https://unpkg.com/@waline/client@v3/dist/waline.css"/>
-               <script src="https://unpkg.com/@waline/client@v3/dist/waline.js"></script>
-
-            2. 在 <body> 内（about-page 组件之后）加：
-               <div id="waline-portal"></div>
-
-            3. 在你的全局 CSS 里加（控制 waline-portal 的位置和宽度）：
-               #waline-portal {
-                 max-width: 56rem;
-                 margin: 0 auto;
-                 padding: 0 1.5rem 4rem;
-               }
-
-            4. Waline CSS 变量覆盖（对齐 DaisyUI，放在全局 CSS）：
-               参见下方 /* WALINE THEME OVERRIDES */
-          -->
-          <div id="waline-slot" class="comment-placeholder"></div>
+          ${this.renderComment()}
         </section>
+
       </main>
 
       ${this._renderFooter()}
     `;
   }
 }
-
-/*
- * ─────────────────────────────────────────────────────────────────────────────
- * WALINE THEME OVERRIDES
- * 放到你的全局 CSS（如 global.css 或 about.html 的 <style>）里
- * 用 DaisyUI CSS 变量覆盖 Waline 默认主题，实现深/浅色自动适配
- * ─────────────────────────────────────────────────────────────────────────────
- *
- * :root, [data-theme="light"] {
- *   --waline-theme-color:     oklch(var(--p));
- *   --waline-active-color:    oklch(var(--p));
- *   --waline-bgcolor:         oklch(var(--b1) / 0.5);
- *   --waline-bgcolor-hover:   oklch(var(--b2));
- *   --waline-bgcolor-light:   oklch(var(--b2));
- *   --waline-color:           oklch(var(--bc));
- *   --waline-border-color:    oklch(var(--bc) / 0.1);
- *   --waline-disable-bgcolor: oklch(var(--b2));
- *   --waline-disable-color:   oklch(var(--bc) / 0.3);
- *   --waline-code-bgcolor:    oklch(var(--b2));
- *   --waline-info-bgcolor:    oklch(var(--b2));
- *   --waline-info-color:      oklch(var(--bc) / 0.5);
- *   --waline-badge-color:     oklch(var(--p));
- *   --waline-font-size:       0.8rem;
- *   --waline-font-family:     ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
- * }
- *
- * [data-theme="dark"], #waline-portal.dark {
- *   --waline-bgcolor:         oklch(var(--b1) / 0.4);
- *   --waline-bgcolor-hover:   oklch(var(--b2));
- *   --waline-bgcolor-light:   oklch(var(--b2));
- *   --waline-border-color:    oklch(var(--bc) / 0.08);
- * }
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * HTML 模板示例（about.html）
- * ─────────────────────────────────────────────────────────────────────────────
- *
- * <!DOCTYPE html>
- * <html>
- * <head>
- *   <link rel="stylesheet" href="/dist/main.css" />
- *   <!-- Waline CSS -->
- *   <link rel="stylesheet" href="https://unpkg.com/@waline/client@v3/dist/waline.css"/>
- * </head>
- * <body>
- *   <about-page></about-page>
- *   <!-- Waline 挂载点（必须在 shadow DOM 之外） -->
- *   <div id="waline-portal"></div>
- *   <!-- Waline JS（在组件脚本之前或之后均可，_initWaline 会检测 window.Waline） -->
- *   <script src="https://unpkg.com/@waline/client@v3/dist/waline.js"></script>
- *   <script type="module" src="/dist/about-page.js"></script>
- * </body>
- * </html>
- */
