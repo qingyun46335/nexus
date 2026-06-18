@@ -11,6 +11,7 @@ export interface SubComment {
   replyTo: string | null        // 被回复者昵称，用于显示"回复 xxx:"
   replyToId: string | null
   deleted: boolean
+  role: "admin" | "guest"
 }
 
 export interface TopCommentString {
@@ -22,6 +23,19 @@ export interface TopCommentString {
   replyCount: number            // 子评论总数，用于子楼分页
   replies: string         // 默认前 N 条
   deleted: boolean
+  role: "admin" | "guest"
+}
+
+export interface Comment {
+  id: string;
+  content: string;
+  authorName: string;
+  authorEmail: string;
+  createdAt: string;
+  replyTo: string | null;
+  replyToId: string | null;
+  deleted: number;
+  parentId: string | null;
 }
 
 export interface TopComment {
@@ -33,6 +47,7 @@ export interface TopComment {
   replyCount: number            // 子评论总数，用于子楼分页
   replies: SubComment[]         // 默认前 N 条
   deleted: boolean
+  role: "admin" | "guest"
 }
 
 export interface PagedResult<T> {

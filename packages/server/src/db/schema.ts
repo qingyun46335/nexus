@@ -46,12 +46,13 @@ export const articleToTag = sqliteTable("article_to_tag", {
 })
 
 export const friendLink = sqliteTable("friend_link", {
-  id: integer("id").primaryKey(),
+  id: text("id").primaryKey(),
   name: text("name").notNull(),
   url: text("url").notNull(),
   avatar: text("avatar").notNull(),
   description: text("description").notNull(),
   author: text("author").notNull(),
+  status: integer("status").$type<1 | 0>().notNull(),  // 1 展示，0 隐藏
 })
 
 export const comment = sqliteTable("comment", {
@@ -60,8 +61,9 @@ export const comment = sqliteTable("comment", {
   authorName: text("author_name").notNull(),
   authorEmail: text("author_email").notNull(),
   createdAt: text("created_at").notNull(),
-  replyTo: text("reply_to"),
-  replyToId: text("reply_to_id"),
-  deleted: integer("deleted").notNull(),
-  parentId: text("parent_id"),
+  replyTo: text("reply_to"),  // 回复者昵称，顶层评论为空白字符串
+  replyToId: text("reply_to_id"),  // 回复者id，顶层评论为空
+  deleted: integer("deleted").$type<1 | 0>().notNull(),  // 1 删除，0 未删除
+  parentId: text("parent_id"),  // 所属顶层id，顶层评论则为空
+  role: text("role").$type<"admin" | "guest">().notNull(),  // 目前主要应用于徽章展示
 })
