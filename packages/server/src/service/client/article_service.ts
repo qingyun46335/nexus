@@ -3,7 +3,7 @@ import * as schema from "../../db/schema";
 import { ErrFrom, Ok, Result, to } from "../../utils/result";
 import { Adjacent, ArticleClientDetailVo, ArticleClientVo, RecommendedArticle } from "../../type/article";
 import { and, asc, count, desc, eq, ne, sql } from "drizzle-orm";
-import { BUCKETError, ContentNotFoundBusinessError, CustomError, DataError, DBError, StorageCorruptedError } from "../../error/error";
+import { BUCKETError, ContentNotFoundBusinessError, CustomError, DataError, DataNotFindError, DBError, StorageCorruptedError } from "../../error/error";
 import { article } from "../../db/schema";
 
 export class ArticleService {
@@ -368,5 +368,65 @@ export class ArticleService {
     const rows = res.v as RecommendedArticle[]
 
     return Ok(rows)
+  }
+
+  public async like(db: DrizzleD1Database<typeof schema>, articleId: string, increase: boolean): Promise<Result<null>> {
+    const res = await to(db.query.article.findFirst({
+      where: eq(schema.article.id, articleId)
+    }))
+
+    if (res.e) {
+      return ErrFrom(DBError, "数据库查询失败", res.e)
+    }
+
+    if (!res.v) {
+      return ErrFrom(DataNotFindError, "数据不存在")
+    }
+
+    let likeCount = res.v.likeCount
+
+    if (increase) {
+      likeCount++
+    } else {
+      likeCount--
+    }
+
+    const res1 = await to(db.update(schema.article).set({
+      likeCount: likeCount
+    }).where(eq(schema.article.id, articleId)))
+
+    if (res1.e) {
+      return ErrFrom(DBError, "数据库更新失败", res1.e)
+    }
+
+    return Ok(null)
+  }
+
+  public async view(db: DrizzleD1Database<typeof schema>, articleId: string,): Promise<Result<null>> {
+    const res = await to(db.query.article.findFirst({
+      where: eq(schema.article.id, articleId)
+    }))
+
+    if (res.e) {
+      return ErrFrom(DBError, "数据库查询失败", res.e)
+    }
+
+    if (!res.v) {
+      return ErrFrom(DataNotFindError, "数据不存在")
+    }
+
+    let views = res.v.views
+
+    views++
+
+    const res1 = await to(db.update(schema.article).set({
+      views: views
+    }).where(eq(schema.article.id, articleId)))
+
+    if (res1.e) {
+      return ErrFrom(DBError, "数据库更新失败", res1.e)
+    }
+
+    return Ok(null)
   }
 }
