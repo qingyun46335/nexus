@@ -133,6 +133,45 @@ export class ArticleRoute extends RouteDocs<VarsAndBindingsEnv<ArticleSetEnv, Ar
                 return c.json(res?.body, res?.status);
             })
         })
+
+        r.setDocsMethod(app => {
+            app.get("/like", async c => {
+                const body = c.req.query()
+                const articleId = body.articleId
+                const increaseNumber = body.increase
+
+                const resp = requestParamErrorValidator({ articleId, increaseNumber });
+
+                if (resp) {
+                    return c.newResponse(JSON.stringify(resp.body), resp.status);
+                }
+
+                const res = RespMap(
+                    await this.as.like(getDb(c.env), articleId, (Number(increaseNumber) === 1 ? true : false))
+                )
+
+                return c.json(res?.body, res?.status)
+            })
+        })
+
+        r.setDocsMethod(app => {
+            app.get("/view", async c => {
+                const body = c.req.query()
+                const articleId = body.articleId
+
+                const resp = requestParamErrorValidator({ articleId, });
+
+                if (resp) {
+                    return c.newResponse(JSON.stringify(resp.body), resp.status);
+                }
+
+                const res = RespMap(
+                    await this.as.view(getDb(c.env), articleId,)
+                )
+
+                return c.json(res?.body, res?.status)
+            })
+        })
     }
 
 }
