@@ -16,6 +16,8 @@ import { AssetsRoute } from "./route/client/assets_route";
 import { TagRoute } from "./route/client/tag_toute";
 import { CommentRoute } from "./route/client/comment_route";
 import { AboutRoute } from "./route/client/about_route";
+import { AdminAboutRoute } from "./route/admin/about_route";
+import { AdminCommentRoute } from "./route/admin/comment_route";
 
 export function createApp(apiDocCollector?: ApiDocCollector) {
   const route = createRoute(apiDocCollector);
@@ -44,6 +46,8 @@ export function createRoute(apiDocCollector?: ApiDocCollector): RootRoute {
   admin.setRoute(new AdminAssetsRoute());
   admin.setRoute(new AdminTagRoute(apiDocCollector))
   admin.setRoute(new AdminStatsRoute(apiDocCollector))
+  admin.setRoute(new AdminAboutRoute(apiDocCollector))
+  admin.setRoute(new AdminCommentRoute(apiDocCollector))
 
   const client = api.setRoute(new ClientRoute(apiDocCollector))
   client.setRoute(new ArticleRoute(apiDocCollector))
