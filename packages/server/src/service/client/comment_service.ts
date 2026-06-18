@@ -4,7 +4,7 @@ import * as schema from "../../db/schema";
 import { DrizzleD1Database } from "drizzle-orm/d1";
 import { formatHKTime } from "../../utils/time";
 import { DataError, DataNotFindError, DataValidateError, DBError } from "../../error/error";
-import { desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 export class CommentService {
     public async addTopComment(db: DrizzleD1Database<typeof schema>, c: CommentSubmitPayload): Promise<Result<TopComment & SubComment>> {
@@ -80,6 +80,7 @@ export class CommentService {
             replyToId: c.replyToId ?? null,
             deleted: 0,
             parentId: c.parentId ?? null,
+            role: "guest",
         }))
 
         if (res.e) {
@@ -98,6 +99,7 @@ export class CommentService {
             replies: [],
             deleted: false,
             parentId: c.parentId ?? null,
+            role: "guest"
         })
     }
 
@@ -135,7 +137,12 @@ export class CommentService {
                         'createdAt', c2.created_at, 
                         'replyTo', c2.reply_to, 
                         'replyToId', c2.reply_to_id, 
-                        'deleted', c2.deleted = 1 
+                        'deleted', c2.deleted = 1, 
+                        'role', CASE
+                            WHEN c2.deleted = 1
+                            THEN 'guest'
+                            ELSE c2.role
+                        END 
                     )
                 )
                 FROM comment c2
@@ -144,11 +151,17 @@ export class CommentService {
                 LIMIT ${subLimit}
             )
             `,
-            deleted: sql<boolean>` ${schema.comment.deleted} = 1 `,
-        }).from(schema.comment).where(isNull(schema.comment.parentId)).orderBy(desc(schema.comment.createdAt)).limit(pageSize).offset((page - 1) * pageSize))
+            deleted: sql<boolean>` ${schema.comment.deleted} `,
+            role: sql<"admin" | "guest">`
+                CASE
+                    WHEN ${schema.comment.deleted} = 1
+                    THEN 'guest'
+                    ELSE ${schema.comment.role}
+                END
+            `,
+        }).from(schema.comment).where(and(isNull(schema.comment.parentId), eq(schema.comment.deleted, 0))).orderBy(desc(schema.comment.createdAt)).limit(pageSize).offset((page - 1) * pageSize))
 
         if (res.e) {
-            console.error(res.e)
             return ErrFrom(DBError, "数据库异常", res.e)
         }
 
@@ -173,7 +186,14 @@ export class CommentService {
             authorName: schema.comment.authorName,      // deleted 时为 null
             replyTo: schema.comment.replyTo,         // 被回复者昵称，用于显示"回复 xxx:"
             replyToId: schema.comment.replyToId,
-            deleted: sql<boolean>` ${schema.comment.deleted} = 1 `,
+            deleted: sql<boolean>` ${schema.comment.deleted}`,
+            role: sql<"admin" | "guest">`
+                CASE
+                    WHEN ${schema.comment.deleted} = 1
+                    THEN 'guest'
+                    ELSE ${schema.comment.role}
+                END
+            `,
         }).from(schema.comment).where(eq(schema.comment.parentId, parentId)).orderBy(desc(schema.comment.createdAt)).limit(pageSize).offset((page - 1) * pageSize))
 
         if (res.e) {
