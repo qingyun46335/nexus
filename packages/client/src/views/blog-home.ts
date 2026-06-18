@@ -388,7 +388,7 @@ export class BlogHome extends DaisyUIElement {
                     <path stroke-linecap="round" stroke-linejoin="round"
                           d="M7 7h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
-                ${this.selectedTag ? `#${this.selectedTag}` : 'Tags'}
+                ${this.selectedTag ? `#${this.getTagName()}` : 'Tags'}
             </button>
 
             <!-- 主题切换 -->
