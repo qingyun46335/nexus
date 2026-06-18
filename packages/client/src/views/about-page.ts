@@ -1,6 +1,5 @@
 import { html, css, } from 'lit';
 import { customElement, query, state } from 'lit/decorators.js';
-import axios from 'axios';
 import { DaisyUIElement } from '../components/daisy-ui-element';
 import { styleMap } from 'lit/directives/style-map.js';
 import type { NexusComment } from '../components/comment/nexus-comment';
@@ -324,7 +323,6 @@ export class AboutPage extends DaisyUIElement {
       const dark = document.documentElement.getAttribute('data-theme') === 'dark';
       if (dark !== this.isDarkMode) {
         this.isDarkMode = dark;
-        this._syncWalineTheme(dark);
       }
     });
     this._themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
@@ -364,10 +362,6 @@ export class AboutPage extends DaisyUIElement {
     // MutationObserver 会自动更新 isDarkMode
   };
 
-  private _syncWalineTheme(dark: boolean) {
-
-  }
-
   private async _onLoadTopPage(e: CustomEvent) {
     const { page, pageSize } = e.detail as {
       page: number; pageSize: number
@@ -382,7 +376,8 @@ export class AboutPage extends DaisyUIElement {
         createdAt: item.createdAt,
         replyCount: item.replyCount,             // 子评论总数，用于子楼分页
         replies: JSON.parse(item.replies),          // 默认前 N 条
-        deleted: item.deleted
+        deleted: item.deleted,
+        role: item.role,
       }
     })
     this._commentEl.setTopPage({
@@ -592,15 +587,12 @@ export class AboutPage extends DaisyUIElement {
           <div class="bio-body">
 <span class="comment"># 关于这里</span>
 
-这里是 <span class="highlight">NEXUS-BLOG</span>，一个我的地方。
-
-我喜欢我喜欢的，无论是代码或是代码，
-历史还有历史，还是故事里里的角色。
+这里是 <span class="highlight">NEXUS-BLOG</span>，希望可以和你讨论有趣的东西
 
 <span class="comment">## 写什么</span>
 
-- <span class="accent">技术</span>：Cloudflare Workers / TypeScript / 分布式系统
-- <span class="accent">历史剧</span>：大明王朝 1566，以及权力与人性的那些事
+- <span class="accent">技术</span>：Cloudflare Workers / TypeScript / Java / Go
+- <span class="accent">历史剧</span>：大明王朝 1566
 - <span class="accent">随笔</span>：凡是觉得值得记下来的
 
 <span class="comment">## 联系</span>
