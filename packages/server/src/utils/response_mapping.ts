@@ -9,7 +9,6 @@ import {
   DataNotFindError,
   DataValidateError,
   DBError,
-  DBNotFindError,
   KVCacheError,
   RequestParmError,
   StatusValidateError,
@@ -48,8 +47,10 @@ export function ResponseMapping(
     if (res.e && res.e instanceof BaseError) {
       const found = items.find((item) => item.type === res.e.type);
 
+      console.error(res.msg, res.e)
+
       if (!found) {
-        return { status: 500, body: { msg: "未找到适配实现" } };
+        return { status: 500, body: { msg: "异常，请联系管理员" } };
       }
 
       return found.map(res.e);
@@ -69,44 +70,44 @@ export const RespMap = ResponseMapping(
   {
     type: new ContentNotFoundBusinessError().type,
     map: (err: BaseError) => {
-      return { status: 200, body: { code: 300, msg: err.message } }
+      return { status: 200, body: { code: 300, msg: err.userMessage } }
     }
   },
   {
     type: new DataError().type,
     map(err) {
-      return { status: 200, body: { code: 350, msg: err.message } }
+      return { status: 200, body: { code: 350, msg: err.userMessage } }
     },
   },
   {
     type: new StorageCorruptedError().type,
     map: (err: BaseError) => {
-      return { status: 200, body: { code: 351, msg: err.message } }
+      return { status: 200, body: { code: 351, msg: err.userMessage } }
     }
   },
 
   {
     type: new DataFormatInvalidError().type,
     map: (err: BaseError) => {
-      return { status: 200, body: { code: 352, msg: err.message } }
+      return { status: 200, body: { code: 352, msg: err.userMessage } }
     }
   },
   {
     type: new DataValidateError().type,
     map(err) {
-      return { status: 200, body: { code: 353, msg: err.message } }
+      return { status: 200, body: { code: 353, msg: err.userMessage } }
     },
   },
   {
     type: new DataNotFindError().type,
     map(err) {
-      return { status: 200, body: { code: 354, msg: err.message } }
+      return { status: 200, body: { code: 354, msg: err.userMessage } }
     },
   },
   {
     type: new StatusValidateError().type,
     map(err) {
-      return { status: 200, body: { code: 401, msg: err.message } }
+      return { status: 200, body: { code: 401, msg: err.userMessage } }
     },
   },
 
@@ -114,37 +115,37 @@ export const RespMap = ResponseMapping(
   {
     type: new RequestParmError().type,
     map: (err: BaseError) => {
-      return { status: 400, body: { msg: err.message } };
+      return { status: 400, body: { msg: err.userMessage } };
     },
   },
   {
     type: new ValidationError().type,
     map: (err: BaseError) => {
-      return { status: 400, body: { msg: err.message } };
+      return { status: 400, body: { msg: err.userMessage } };
     },
   },
   {
     type: new KVCacheError().type,
     map: (err: BaseError) => {
-      return { status: 500, body: { msg: err.message } };
+      return { status: 500, body: { msg: err.userMessage } };
     },
   },
   {
     type: new DBError().type,
     map(err) {
-      return { status: 500, body: { msg: err.message } }
+      return { status: 500, body: { msg: err.userMessage } }
     },
   },
   {
     type: new BUCKETError().type,
     map(err) {
-      return { status: 500, body: { msg: err.message } }
+      return { status: 500, body: { msg: err.userMessage } }
     },
   },
   {
     type: new CustomError().type,
     map: (err: BaseError) => {
-      return { status: 500, body: { msg: err.message } };
+      return { status: 500, body: { msg: err.userMessage } };
     },
   },
 

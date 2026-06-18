@@ -2,6 +2,8 @@ export abstract class BaseError extends Error {
   public readonly cause?: Error;
   abstract readonly type: string;
 
+  abstract readonly userMessage: string;
+
   constructor(message: string, cause?: Error) {
     super(message);
     this.name = this.constructor.name;
@@ -37,6 +39,7 @@ export abstract class BaseError extends Error {
 }
 
 export class ContentEmptyError extends BaseError {
+  userMessage: string = "内容不能为空";
   type: string = "ContentEmptyError";
   constructor(message = "内容不能为空", cause?: Error) {
     super(message, cause);
@@ -44,6 +47,7 @@ export class ContentEmptyError extends BaseError {
 }
 
 export class ValidationError extends BaseError {
+  userMessage: string = "输入内容格式不正确";
   type: string = "ValidationError";
   constructor(message = "内容格式不正确", cause?: Error) {
     super(message, cause);
@@ -51,6 +55,7 @@ export class ValidationError extends BaseError {
 }
 
 export class ContentRepeatError extends BaseError {
+  userMessage: string = "内容已存在";
   type: string = "ContentRepeatError";
   constructor(message = "内容已重复", cause?: Error) {
     super(message, cause);
@@ -58,6 +63,7 @@ export class ContentRepeatError extends BaseError {
 }
 
 export class RequestParmError extends BaseError {
+  userMessage: string = "请求参数错误";
   type: string = "RequestParmError";
   constructor(message = "请求参数错误", cause?: Error) {
     super(message, cause);
@@ -66,6 +72,7 @@ export class RequestParmError extends BaseError {
 
 // 中间件错误
 export class KVCacheError extends BaseError {
+  userMessage: string = "系统繁忙，请稍后重试";
   type: string = "KVCacheError";
   constructor(message = "KV  数据库错误", cause?: Error) {
     super(message, cause);
@@ -73,6 +80,7 @@ export class KVCacheError extends BaseError {
 }
 
 export class DBError extends BaseError {
+  userMessage: string = "系统繁忙，请稍后重试";
   type: string = "DBError"
   constructor(message = "数据库错误", cause?: Error) {
     super(message, cause)
@@ -80,6 +88,7 @@ export class DBError extends BaseError {
 }
 
 export class BUCKETError extends BaseError {
+  userMessage: string = "文件服务暂时不可用";
   type: string = "BUCKETError"
   constructor(message = "r2存储错误", cause?: Error) {
     super(message, cause)
@@ -87,6 +96,7 @@ export class BUCKETError extends BaseError {
 }
 
 export class CustomError extends BaseError {
+  userMessage: string = "服务器内部错误";
   type: string = "CustomError";
   constructor(message = "未知异常", cause?: Error) {
     super(message, cause);
@@ -95,6 +105,7 @@ export class CustomError extends BaseError {
 
 // 业务错误
 export class ContentNotFoundBusinessError extends BaseError {
+  userMessage: string = "内容不存在或已被删除";
   type: string = "ContentNotFoundBusinessError";
   constructor(message = "文章为空", cause?: Error) {
     super(message, cause);
@@ -102,6 +113,7 @@ export class ContentNotFoundBusinessError extends BaseError {
 }
 
 export class StorageCorruptedError extends BaseError {
+  userMessage: string = "数据异常，请联系管理员";
   type: string = "StorageCorruptedError"
   constructor(message = "存储损坏", cause?: Error) {
     super(message, cause)
@@ -109,6 +121,7 @@ export class StorageCorruptedError extends BaseError {
 }
 
 export class DataError extends BaseError {
+  userMessage: string = "数据处理失败";
   type: string = "DataError"
   constructor(message = "数据异常", cause?: Error) {
     super(message, cause)
@@ -116,6 +129,7 @@ export class DataError extends BaseError {
 }
 
 export class DataFormatInvalidError extends BaseError {
+  userMessage: string = "数据格式不正确";
   type: string = "DataFormatInvalidError"
   constructor(message = "数据格式异常", cause?: Error) {
     super(message, cause)
@@ -123,6 +137,7 @@ export class DataFormatInvalidError extends BaseError {
 }
 
 export class DataValidateError extends BaseError {
+  userMessage: string = "数据校验失败";
   type: string = "DataValidateError"
   constructor(message = "数据校验异常", cause?: Error) {
     super(message, cause)
@@ -130,6 +145,7 @@ export class DataValidateError extends BaseError {
 }
 
 export class DataNotFindError extends BaseError {
+  userMessage: string = "数据不存在";
   type: string = "DataNotFindError"
   constructor(message = "数据不存在", cause?: Error) {
     super(message, cause)
@@ -137,6 +153,7 @@ export class DataNotFindError extends BaseError {
 }
 
 export class StatusValidateError extends BaseError {
+  userMessage: string = "当前状态不允许执行该操作";
   type: string = "StatusValidateError"
   constructor(message = "状态校验错误", cause?: Error) {
     super(message, cause)
