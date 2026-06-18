@@ -601,6 +601,7 @@ export class BlogHome extends DaisyUIElement {
                     <span>${readMin} min</span>
                     <span class="text-base-content/15">·</span>
                     <span>${article.wordCount.toLocaleString()} 字</span>
+                    <span>👁 ${article.views}</span>
                     ${badges.length ? html`
                         <span class="text-base-content/15">·</span>
                         ${badges.map(b => html`
