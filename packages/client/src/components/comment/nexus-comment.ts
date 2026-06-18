@@ -5,7 +5,7 @@
 // 公开方法：addTopComment(c: NewTopComment) / addSubComment(c: NewSubComment) / submitError()
 // ============================================================
 
-import { LitElement, html, css, nothing, type TemplateResult } from 'lit'
+import { html, css, nothing, type TemplateResult } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { repeat } from 'lit/directives/repeat.js'
 import {
@@ -17,7 +17,6 @@ import {
   type NewSubComment,
   type GuestInfo,
   applyEmoji,
-  gravatarUrl,
   formatTime,
   getAvatarText,
   getAvatarColor,
@@ -26,9 +25,56 @@ import { DaisyUIElement } from '../daisy-ui-element'
 
 // ─── 子组件：子楼评论列表（带独立分页） ───────────────────────────────────────
 @customElement('nexus-sub-comments')
-export class NexusSubComments extends LitElement {
-  static styles = css`
+export class NexusSubComments extends DaisyUIElement {
+  static defaultStyles = css`
     :host { display: block; }
+
+    .sub-comment {
+      display: flex;
+      gap: 0.625rem;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.5rem;
+      border-radius: 0.5rem;
+      background: var(--fallback-b2, oklch(var(--b2)));
+      transition: background 0.15s;
+    }
+
+    .sub-comment.deleted {
+      opacity: 0.5;
+    }
+
+    .sub-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .avatar {
+      flex-shrink: 0;
+      border-radius: 9999px;
+      object-fit: cover;
+    }
+
+    .avatar-md { width: 2.5rem; height: 2.5rem; }
+    .avatar-sm { width: 2rem; height: 2rem; }
+    .avatar-xs { width: 1.5rem; height: 1.5rem; }
+
+    .reply-btn {
+      align-self: flex-start;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.75rem;
+      color: var(--fallback-bc, oklch(var(--bc) / 0.4));
+      padding: 0.125rem 0;
+      transition: color 0.15s;
+    }
+
+    .reply-btn:hover {
+      color: var(--fallback-p, oklch(var(--p)));
+    }
   `
 
   @property({ type: String, attribute: 'parent-id' }) parentId = ""
@@ -97,6 +143,7 @@ export class NexusSubComments extends LitElement {
         <div class="sub-body">
           <div class="meta">
             <span class="author">${deleted ? '[已删除]' : r.authorName}</span>
+            <span>${deleted ? nothing : renderRadge(r.role)}</span>
             ${r.replyTo ? html`<span class="reply-to">回复 <b>${r.replyTo}</b></span>` : nothing}
             <span class="time">${formatTime(r.createdAt)}</span>
           </div>
@@ -478,6 +525,7 @@ export class NexusComment extends DaisyUIElement {
         <div class="top-body">
           <div class="meta">
             <span class="author">${deleted ? '[已删除]' : c.authorName}</span>
+            <span>${deleted ? nothing : renderRadge(c.role)}</span>
             <span class="time">${formatTime(c.createdAt)}</span>
           </div>
           <div class="content">
@@ -914,6 +962,12 @@ export class NexusComment extends DaisyUIElement {
       }
     }
   `
+}
+
+
+
+function renderRadge(role: "admin" | "guest") {
+  return role === "admin" ? html`<div class="badge badge-primary">管理员</div>` : nothing
 }
 
 // ── 工具函数：生成分页数字列表（含省略号） ──
