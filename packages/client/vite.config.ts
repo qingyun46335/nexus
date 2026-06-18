@@ -25,6 +25,7 @@ export default defineConfig({
         login: "./pages/login.html",
         admin: "./pages/admin.html",
         "admin/article": "./pages/admin/article.html",
+        "admin/blog-setting": "./pages/admin/blog-setting.html",
         error: "./pages/error.html",
         home: "./pages/home.html",
         article: "./pages/article.html",
