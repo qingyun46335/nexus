@@ -22,7 +22,7 @@ export class AdminHeader extends DaisyUIElement {
                 <div class="navbar-start">
                     <rainbow-button animated .selected=${true} @click=${() => window.location.href = "/pages/admin"}>Admin Panel</rainbow-button>
                     <button class="btn btn-primary ml-4" @click=${() => window.location.href = "/pages/admin/article"}>Articles</button>
-                    <button class="btn btn-secondary ml-2" @click=${() => window.location.href = "/pages/admin/blog"}>Blog</button>
+                    <button class="btn btn-secondary ml-2" @click=${() => window.location.href = "/pages/admin/blog-setting"}>Blog</button>
                 </div>
                 <div class="navbar-end">
                     <a class="btn btn-ghost" @click=${() => { this.logout() }}>Logout</a>
