@@ -230,6 +230,7 @@ export class ArticleTable extends DaisyUIElement {
                         <th class="hidden xl:table-cell">创建时间</th>
                         <th class="hidden xl:table-cell">更新时间</th>
                         <th class="hidden sm:table-cell">浏览量</th>
+                        <th class="hidden sm:table-cell">点赞量</th>
                         <th class="hidden sm:table-cell">字数</th>
                         <th class="whitespace-nowrap text-center">操作</th>
                     </tr>
@@ -255,6 +256,7 @@ export class ArticleTable extends DaisyUIElement {
                             <td class="hidden xl:table-cell text-xs opacity-70">${article.createdAt}</td>
                             <td class="hidden xl:table-cell text-xs opacity-70">${article.updatedAt}</td>
                             <td class="hidden sm:table-cell">${article.views}</td>
+                            <td class="hidden sm:table-cell">${article.likeCount}</td>
                             <td class="hidden sm:table-cell">${article.wordCount}</td>
                             
                             <td class="whitespace-nowrap flex flex-row gap-2 justify-center items-center h-full pt-3">
