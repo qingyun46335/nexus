@@ -7,6 +7,7 @@ export interface AdminArticle {
     createdAt: string;
     updatedAt: string;
     views: number;
+    likeCount: number;
     wordCount: number;
 }
 
