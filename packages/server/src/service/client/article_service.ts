@@ -67,16 +67,6 @@ export class ArticleService {
     sql1.append(sql`and a.status = "published" `)
     sql2.append(sql`and a.status = "published" `)
 
-    // if (dateIntervalType && dateFrom && dateTo) {
-    //     if (dateIntervalType === "createdAt") {
-    //         sql1.append(sql`and created_at between ${dateFrom} and ${dateTo} `)
-    //         sql2.append(sql`and created_at between ${dateFrom} and ${dateTo} `)
-    //     } else if (dateIntervalType === "updatedAt") {
-    //         sql1.append(sql`and updated_at between ${dateFrom} and ${dateTo} `)
-    //         sql2.append(sql`and updated_at between ${dateFrom} and ${dateTo} `)
-    //     }
-    // }
-
     sql1.append(sql`group by a.id order by a.created_at desc LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`)
 
     const res1 = await to(db.all(sql`
