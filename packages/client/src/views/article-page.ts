@@ -7,6 +7,7 @@ import hljs from "highlight.js";
 import { getUrlParam } from "../utils/url_util";
 import { DaisyUIElement } from "../components/daisy-ui-element";
 import { styleMap } from "lit/directives/style-map.js";
+import axiosi from "../utils/axios";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -40,7 +41,7 @@ interface ArticleDetail {
   wordCount: number;
   tags: Tag[];
   files: ArticleFile[];
-  content: string; // raw markdown (may contain <img>/<video>/<audio> tags)
+  content: string; // raw markdown
 }
 
 interface AdjacentArticle {
@@ -108,7 +109,6 @@ function buildRenderer(): Renderer {
   const renderer = new Renderer();
   const slugCount: Record<string, number> = {};
 
-  // Headings: inject id for TOC anchors
   renderer.heading = ({ text, depth }: { text: string; depth: number }) => {
     const raw = text.replace(/<[^>]*>/g, "");
     const base = slugify(raw);
@@ -117,7 +117,6 @@ function buildRenderer(): Renderer {
     return `<h${depth} id="${id}">${text}</h${depth}>`;
   };
 
-  // Code blocks: highlight.js + copy button + header bar
   renderer.code = ({ text, lang }: { text: string; lang?: string }) => {
     const language = lang && hljs.getLanguage(lang) ? lang : "plaintext";
     const highlighted = hljs.highlight(text, { language }).value;
@@ -141,12 +140,10 @@ function buildRenderer(): Renderer {
     </div>`;
   };
 
-  // Blockquote: decorative
   renderer.blockquote = ({ text }: { text: string }) => {
     return `<blockquote class="nexus-blockquote">${text}</blockquote>`;
   };
 
-  // Images from markdown syntax ![alt](url): styled with lightbox trigger
   renderer.image = ({ href, title, text }: { href: string; title?: string | null; text: string }) => {
     const alt = text || title || "";
     const cap = title ? `<figcaption class="prose-img-caption">${title}</figcaption>` : "";
@@ -162,17 +159,12 @@ function buildRenderer(): Renderer {
   return renderer;
 }
 
-// Post-process rendered HTML: style raw <img>, <video>, <audio> HTML tags
-// that appear in markdown source as literal HTML
 function postProcessHtml(raw: string): string {
-  // <img> tags not already wrapped in .prose-figure
   raw = raw.replace(
     /(?<!class="prose-img[^"]*")(<img\b(?![^>]*class="prose-img")[^>]*>)/gi,
     (tag) => {
-      // Extract src and alt
       const src = (tag.match(/src="([^"]*)"/) || [])[1] || "";
       const alt = (tag.match(/alt="([^"]*)"/) || [])[1] || "";
-      // const newTag = tag.replace(/<img/, '<img class="prose-img" loading="lazy" decoding="async"');
       return `<figure class="prose-figure">
         <img class="prose-img" src="${src}" alt="${alt}" loading="lazy" decoding="async"
              data-lightbox="${src}"
@@ -182,11 +174,9 @@ function postProcessHtml(raw: string): string {
     }
   );
 
-  // <video> tags: wrap in styled container
   raw = raw.replace(
     /<video\b([^>]*)>([\s\S]*?)<\/video>/gi,
     (_, attrs, inner) => {
-      // Ensure controls attribute
       const hasControls = /controls/.test(attrs);
       return `<div class="prose-video-wrapper">
         <video class="prose-video"${hasControls ? "" : " controls"} ${attrs} playsinline>
@@ -196,7 +186,6 @@ function postProcessHtml(raw: string): string {
     }
   );
 
-  // <audio> tags: wrap in styled container
   raw = raw.replace(
     /<audio\b([^>]*)>([\s\S]*?)<\/audio>/gi,
     (_, attrs, inner) => {
@@ -219,23 +208,37 @@ function buildHtml(md: string): string {
   return postProcessHtml(raw);
 }
 
-function extractToc(html: string): TocItem[] {
+function extractToc(html: string): { items: TocItem[], htmlWithIds: string } {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
   const items: TocItem[] = [];
+  const slugCount: Record<string, number> = {};
+
   doc.querySelectorAll("h1, h2, h3").forEach((h) => {
+    const rawText = h.textContent ?? "";
+
+    // 如果标签本身没有 id，我们就手动给它生成并塞进去
+    let id = h.id;
+    if (!id) {
+      const base = slugify(rawText);
+      slugCount[base] = (slugCount[base] ?? -1) + 1;
+      id = slugCount[base] === 0 ? base : `${base}-${slugCount[base]}`;
+      h.id = id; // 核心：把生成的 id 赋给 DOM 节点
+    }
+
     items.push({
-      id: h.id || slugify(h.textContent ?? ""),
-      text: h.textContent ?? "",
+      id: id,
+      text: rawText,
       level: parseInt(h.tagName[1]),
     });
   });
-  return items;
+
+  // 返回目录数组的同时，也返回已经被打上 id 的完整 HTML 字符串
+  return {
+    items,
+    htmlWithIds: doc.body.innerHTML
+  };
 }
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-// ─── File icon map ────────────────────────────────────────────────────────────
 
 const FILE_ICON: Record<string, string> = {
   pdf: "ph:file-pdf",
@@ -259,15 +262,10 @@ const FILE_ICON: Record<string, string> = {
 @customElement("article-page")
 export class ArticlePage extends DaisyUIElement {
 
-  // ── Shadow DOM is intentionally disabled so Tailwind/DaisyUI utility classes
-  //    from the global stylesheet apply directly. All scoped styles go via
-  //    adoptedStyleSheets or inline <style> injected into the light DOM.
   createRenderRoot() { return this; }
 
-  // ── Props ──
   @property({ type: String }) articleId = "daming-ep1-analysis";
 
-  // ── State ──
   @state() private _article: ArticleDetail | null = null;
   @state() private _adjacent: AdjacentResponse | null = null;
   @state() private _recommended: RecommendedArticle[] = [];
@@ -278,34 +276,22 @@ export class ArticlePage extends DaisyUIElement {
   @state() private _activeTocId = "";
   @state() private _tocCollapsed = false;
 
-  // TOC viewport clipping: fraction [0,1] of TOC visible from bottom
-  // and top, driven by article's bounding rect in viewport
-  @state() private _tocClipTop = 0;    // px from top to clip
-  // @ts-ignore
-  @state() private _tocClipBottom = 0; // px from bottom to clip
-  @state() private _tocVisible = false;
-
   @state() private _liked = false;
   @state() private _likeCount = 0;
   @state() private _likeAnimating = false;
   @state() private _isDark = false;
   @state() private _readingProgress = 0;
+  @state() private _hasViewed = false; // 新增：是否已计入浏览量
   @state() private _toastMsg = "";
 
-  // Lightbox
   @state() private _lightboxSrc = "";
   @state() private _lightboxAlt = "";
   @state() private _lightboxOpen = false;
 
-  // ── Private ──
   private _headingObserver: IntersectionObserver | null = null;
   private _scrollRaf = 0;
   private _toastTimer: ReturnType<typeof setTimeout> | null = null;
   private _styleEl: HTMLStyleElement | null = null;
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Lifecycle
-  // ─────────────────────────────────────────────────────────────────────────
 
   private loadingLightOrDark() {
     const dark = window.localStorage.getItem("data-theme")
@@ -329,7 +315,6 @@ export class ArticlePage extends DaisyUIElement {
     window.addEventListener("scroll", this._onScroll, { passive: true });
     window.addEventListener("resize", this._onScroll, { passive: true });
 
-    // Lightbox event from prose content (bubbles through light DOM)
     this.addEventListener("nexus-lightbox", this._onLightbox as EventListener);
   }
 
@@ -345,14 +330,10 @@ export class ArticlePage extends DaisyUIElement {
     if (changed.has("_renderedHtml") && this._renderedHtml) {
       this.updateComplete.then(() => {
         this._initHeadingObserver();
-        this._onScroll(); // initial TOC position
+        this._onScroll();
       });
     }
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Scoped styles injected into <head> (light DOM component)
-  // ─────────────────────────────────────────────────────────────────────────
 
   private _injectStyles() {
     if (document.getElementById("nexus-article-styles")) return;
@@ -373,12 +354,6 @@ export class ArticlePage extends DaisyUIElement {
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
   border: 1px solid oklch(var(--bc) / 0.10);
 }
-.nexus-glass-heavy {
-  background: oklch(var(--b1) / 0.72);
-  backdrop-filter: blur(24px) saturate(1.6);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  border: 1px solid oklch(var(--bc) / 0.12);
-}
 
 /* ── Prose typography ── */
 .prose-nexus {
@@ -391,7 +366,7 @@ export class ArticlePage extends DaisyUIElement {
   font-family: 'Noto Serif SC','Source Han Serif CN',serif;
   font-weight: 700; line-height: 1.4;
   margin-top: 2.4em; margin-bottom: 0.8em;
-  scroll-margin-top: 5rem;
+  scroll-margin-top: 5rem; /* 保证点击目录跳转时预留出顶部导航栏的空间 */
 }
 .prose-nexus h1 {
   font-size: 1.55rem;
@@ -420,7 +395,6 @@ export class ArticlePage extends DaisyUIElement {
 .prose-nexus li { margin-bottom: 0.45em; }
 .prose-nexus hr { border-color: oklch(var(--bc)/0.1); margin: 2em 0; }
 
-/* Table */
 .prose-nexus table {
   width: 100%; border-collapse: collapse;
   margin-bottom: 1.8em; font-size: 0.9rem; display: block; overflow-x: auto;
@@ -436,7 +410,6 @@ export class ArticlePage extends DaisyUIElement {
 }
 .prose-nexus tr:hover td { background: oklch(var(--b2)/0.4); }
 
-/* Blockquote */
 .prose-nexus .nexus-blockquote {
   position: relative; margin: 1.8em 0;
   padding: 1.1rem 1.25rem 1.1rem 1.6rem;
@@ -451,7 +424,6 @@ export class ArticlePage extends DaisyUIElement {
   font-family: Georgia,serif; line-height: 1; pointer-events: none;
 }
 
-/* Inline code */
 .prose-nexus :not(pre) > code {
   background: oklch(var(--b2)/0.8);
   border: 1px solid oklch(var(--bc)/0.1);
@@ -460,7 +432,6 @@ export class ArticlePage extends DaisyUIElement {
   color: oklch(var(--p));
 }
 
-/* Code block */
 .prose-nexus .code-block-wrapper {
   margin: 1.8em 0; border-radius: .8rem; overflow: hidden;
   border: 1px solid oklch(var(--bc)/0.1);
@@ -493,7 +464,6 @@ export class ArticlePage extends DaisyUIElement {
 }
 .prose-nexus code { font-family: 'JetBrains Mono','Fira Code',monospace; }
 
-/* hljs Tokyo Night */
 .hljs { background: #1a1b26 !important; color: #c0caf5; }
 .hljs-keyword,.hljs-selector-tag { color: #bb9af7; }
 .hljs-string,.hljs-attr { color: #9ece6a; }
@@ -507,9 +477,6 @@ export class ArticlePage extends DaisyUIElement {
 .hljs-punctuation { color: #89ddff; }
 .hljs-tag { color: #f7768e; }
 
-/* ── Media inside prose ── */
-
-/* figure + img (both markdown and raw <img>) */
 .prose-nexus .prose-figure {
   margin: 2em 0; text-align: center;
 }
@@ -530,7 +497,6 @@ export class ArticlePage extends DaisyUIElement {
   color: oklch(var(--bc)/0.45); font-style: italic;
 }
 
-/* video */
 .prose-nexus .prose-video-wrapper {
   margin: 2em 0; border-radius: .7rem; overflow: hidden;
   background: #000;
@@ -541,7 +507,6 @@ export class ArticlePage extends DaisyUIElement {
   display: block; object-fit: contain;
 }
 
-/* audio */
 .prose-nexus .prose-audio-wrapper {
   margin: 1.6em 0; display: flex; align-items: center; gap: .75rem;
   padding: .85rem 1.1rem;
@@ -557,20 +522,19 @@ export class ArticlePage extends DaisyUIElement {
   accent-color: oklch(var(--p));
 }
 
-/* ── TOC ── */
-.nexus-toc-panel {
-  width: 15rem; flex-shrink: 0;
-  /* Position is driven inline by JS */
-  position: fixed;
-  overflow: hidden;    /* clip top/bottom */
-  pointer-events: none; /* panel itself transparent, children get events */
-  transition: none;
-}
+/* ── TOC Custom Scrollbar ── */
 .nexus-toc-inner {
-  pointer-events: auto;
   border-radius: .75rem;
   overflow: hidden;
 }
+.nexus-toc-inner .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.nexus-toc-inner .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.nexus-toc-inner .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: oklch(var(--bc)/0.15);
+  border-radius: 4px;
+}
+.nexus-toc-inner .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: oklch(var(--bc)/0.3); }
+
 .nexus-toc-item {
   display: block; width: 100%; text-align: left;
   padding: .35rem 1rem; font-size: .72rem; line-height: 1.45;
@@ -603,7 +567,6 @@ export class ArticlePage extends DaisyUIElement {
   transform: translateY(-1px);
 }
 
-/* ── Like heartbeat ── */
 @keyframes nexus-heartbeat {
   0%   { transform: scale(1); }
   30%  { transform: scale(1.38); }
@@ -612,7 +575,6 @@ export class ArticlePage extends DaisyUIElement {
 }
 .nexus-liked-beat { animation: nexus-heartbeat .45s ease; }
 
-/* ── Lightbox ── */
 .nexus-lightbox-overlay {
   position: fixed; inset: 0; z-index: 10000;
   background: rgba(0,0,0,.88); backdrop-filter: blur(6px);
@@ -643,7 +605,6 @@ export class ArticlePage extends DaisyUIElement {
 }
 .nexus-lightbox-close:hover { background: rgba(255,255,255,.25); }
 
-/* ── Toast ── */
 .nexus-toast {
   position: fixed; bottom: 1.75rem; left: 50%; transform: translateX(-50%);
   z-index: 9998; padding: .45rem 1.1rem;
@@ -658,7 +619,6 @@ export class ArticlePage extends DaisyUIElement {
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* ── Skeleton shimmer ── */
 .nexus-skeleton {
   border-radius: .35rem;
   background: linear-gradient(
@@ -675,7 +635,6 @@ export class ArticlePage extends DaisyUIElement {
   100% { background-position: -200% 0; }
 }
 
-/* ── Adjacent / recommended cards ── */
 .nexus-nav-card {
   display: flex; flex-direction: column; gap: .35rem;
   padding: 1rem 1.1rem; border-radius: .75rem;
@@ -690,7 +649,6 @@ export class ArticlePage extends DaisyUIElement {
   background: oklch(var(--b1)/0.7);
 }
 
-/* ── Section label ── */
 .nexus-section-label {
   font-family: monospace; font-size: .72rem; font-weight: 600;
   letter-spacing: .1em; text-transform: uppercase;
@@ -703,10 +661,6 @@ export class ArticlePage extends DaisyUIElement {
     this._styleEl = s;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Data
-  // ─────────────────────────────────────────────────────────────────────────
-
   protected firstUpdated() {
     const res = getUrlParam("article")
     if (res && res.exists && res.value) {
@@ -718,7 +672,6 @@ export class ArticlePage extends DaisyUIElement {
   private async _fetchAll() {
     this._loading = true;
     try {
-      // Production:
       const [artRes, adjRes, recRes] = await Promise.all([
         axios.get(`/api/client/article/getArticleById?id=${this.articleId}`),
         axios.get(`/api/client/article/adjacent?id=${this.articleId}`),
@@ -729,10 +682,13 @@ export class ArticlePage extends DaisyUIElement {
       this._recommended = recRes.data.value;
       this._likeCount = this._article ? this._article.likes : 0;
       this._liked = localStorage.getItem(`like:${this.articleId}`) === "1";
-      if (this._liked) this._likeCount++;
+      this._hasViewed = localStorage.getItem(`viewed:${this.articleId}`) === "1";
 
       this._renderedHtml = buildHtml(this._article ? this._article.content : "");
-      this._toc = extractToc(this._renderedHtml);
+      const { items, htmlWithIds } = extractToc(this._renderedHtml);
+
+      this._toc = items;
+      this._renderedHtml = htmlWithIds;
     } catch (e) {
       console.log(e)
       this._error = "文章加载失败，请稍后重试";
@@ -742,58 +698,23 @@ export class ArticlePage extends DaisyUIElement {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // TOC scroll tracking
+  // Scroll & TOC Observer
   // ─────────────────────────────────────────────────────────────────────────
 
   private _onScroll = () => {
     cancelAnimationFrame(this._scrollRaf);
     this._scrollRaf = requestAnimationFrame(() => {
-      // Reading progress
       const el = document.documentElement;
       const total = el.scrollHeight - el.clientHeight;
       this._readingProgress = total > 0 ? (el.scrollTop / total) * 100 : 0;
 
-      // TOC clip driven by article bounding rect
-      const articleEl = this.querySelector(".nexus-article-body");
-      if (!articleEl) return;
-
-      const rect = articleEl.getBoundingClientRect();
-      const vh = window.innerHeight;
-      const HEADER = 56; // sticky header height
-
-      // How much of the article is visible in viewport (below header)
-      const visTop = Math.max(rect.top, HEADER);
-      const visBot = Math.min(rect.bottom, vh);
-      const visibleHeight = Math.max(0, visBot - visTop);
-
-      this._tocVisible = visibleHeight > 0;
-
-      if (!this._tocVisible) {
-        this._tocClipTop = 0;
-        this._tocClipBottom = 0;
-        return;
+      // Views trigger logic (防刷: 滚动超过 5% 时触发)
+      if (!this._hasViewed && this._readingProgress > 5) {
+        this._hasViewed = true;
+        localStorage.setItem(`viewed:${this.articleId}`, "1");
+        axiosi.get(`/client/article/view?articleId=${this.articleId}`)
+          .catch(e => console.error("View count error:", e));
       }
-
-      // TOC panel height (measured from DOM if available)
-      // const tocPanel = this.querySelector(".nexus-toc-panel") as HTMLElement | null;
-      const tocInner = this.querySelector(".nexus-toc-inner") as HTMLElement | null;
-      const tocH = tocInner ? tocInner.offsetHeight : 300;
-
-      // The TOC always wants to sit at `top = HEADER` in fixed coords.
-      // We clip it from the top if the article hasn't reached the header yet,
-      // and from the bottom if the article bottom is above the fold.
-
-      // Clip from top: how far above HEADER is the article top?
-      // If rect.top > HEADER → article hasn't crossed header → clip top by (rect.top - HEADER)
-      const rawClipTop = Math.max(0, rect.top - HEADER);
-      // Clip from bottom: if article bottom is within viewport, TOC should end there
-      const rawClipBottom = Math.max(0, tocH - visibleHeight - Math.max(0, HEADER - rect.top));
-      // Clamp
-      const clipTop = Math.min(rawClipTop, tocH);
-      const clipBottom = Math.max(0, Math.min(rawClipBottom, tocH - clipTop));
-
-      this._tocClipTop = clipTop;
-      this._tocClipBottom = clipBottom;
     });
   };
 
@@ -832,7 +753,12 @@ export class ArticlePage extends DaisyUIElement {
     this._likeCount += this._liked ? 1 : -1;
     localStorage.setItem(`like:${this.articleId}`, this._liked ? "1" : "0");
     this._likeAnimating = true;
-    setTimeout(() => (this._likeAnimating = false), 500);
+    axiosi.get(`/client/article/like?articleId=${this.articleId}&increase=${this._liked ? 1 : 0}`)
+      .then(res => {
+        if (res.status === 200) {
+          this._likeAnimating = false
+        }
+      });
   }
 
   private _share() {
@@ -846,8 +772,11 @@ export class ArticlePage extends DaisyUIElement {
   }
 
   private _scrollToId(id: string) {
-    const el = document.getElementById(id);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const el = this.querySelector(`[id="${id}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    console.log("el: ", el)
   }
 
   private _onLightbox = (e: CustomEvent<{ src: string; alt: string }>) => {
@@ -863,13 +792,11 @@ export class ArticlePage extends DaisyUIElement {
   }
 
   private _downloadFile(file: ArticleFile) {
-    // Production: redirect to a signed download URL from backend
-    // axios.get(`/api/files/${file.uuid}/download`).then(r => window.open(r.data.url))
     window.open(file.clientFilePath, "_blank");
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Render: Navbar
+  // Render Sections
   // ─────────────────────────────────────────────────────────────────────────
 
   private _renderNavbar() {
@@ -902,10 +829,6 @@ export class ArticlePage extends DaisyUIElement {
       </header>`;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render: Footer
-  // ─────────────────────────────────────────────────────────────────────────
-
   private _renderFooter() {
     return html`
       <footer class="mt-16 border-t border-base-content/6 nexus-glass">
@@ -915,23 +838,9 @@ export class ArticlePage extends DaisyUIElement {
           <span>© ${new Date().getFullYear()} NEXUS</span>
           <span class="hidden sm:inline text-base-content/12">·</span>
           <span>Powered by Cloudflare Workers &amp; Lit</span>
-          <span class="hidden sm:inline text-base-content/12">·</span>
-          <span class="flex items-center gap-1 hover:text-warning transition-colors">
-            <!-- <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20
-                       C4.98 20 4 19.01 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56
-                       15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a
-                       9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
-            </svg>
-            RSS -->
-          </span>
         </div>
       </footer>`;
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render: Skeleton
-  // ─────────────────────────────────────────────────────────────────────────
 
   private _renderSkeleton() {
     return html`
@@ -952,22 +861,14 @@ export class ArticlePage extends DaisyUIElement {
       </div>`;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render: Article header (full-width)
-  // ─────────────────────────────────────────────────────────────────────────
-
   private _renderArticleHeader(a: ArticleDetail) {
     return html`
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-7">
-
-        <!-- Title -->
         <h1 class="text-2xl sm:text-3xl lg:text-[2.1rem] font-bold leading-tight
                    text-base-content mb-4"
             style="font-family:'Noto Serif SC','Source Han Serif CN',serif;">
           ${a.title}
         </h1>
-
-        <!-- Meta -->
         <div class="flex flex-wrap items-center gap-x-3 gap-y-2
                     text-[.8rem] text-base-content/45 font-mono mb-4">
           <span class="flex items-center gap-1">
@@ -987,7 +888,7 @@ export class ArticlePage extends DaisyUIElement {
           <span class="opacity-30">·</span>
           <span class="flex items-center gap-1">
             <iconify-icon icon="ph:eye"></iconify-icon>
-            ${a.views.toLocaleString()}
+            👁 ${a.views.toLocaleString()}
           </span>
           ${a.updatedAt !== a.createdAt ? html`
             <span class="opacity-30">·</span>
@@ -996,117 +897,59 @@ export class ArticlePage extends DaisyUIElement {
               更新 ${formatDate(a.updatedAt)}
             </span>` : nothing}
         </div>
-
-        <!-- Tags -->
         <div class="flex flex-wrap gap-2 mb-5">
           ${a.tags.map(t => html`
-            <span 
-               class="badge badge-outline text-[.72rem] font-mono
-                      hover:badge-primary transition-colors">
+            <span class="badge badge-outline text-[.72rem] font-mono hover:badge-primary transition-colors">
               #${t.name}
             </span>`)}
         </div>
-
-        <!-- Description -->
         <p class="text-base-content/55 text-[.9rem] leading-relaxed
-                  border-l-2 border-base-content/15 pl-4 italic
-                  max-w-2xl">
+                  border-l-2 border-base-content/15 pl-4 italic max-w-2xl">
           ${a.description}
         </p>
       </div>
-
-      <!-- Separator -->
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="border-t border-base-content/8 mb-0"></div>
       </div>`;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Render: TOC panel (fixed, clip-driven)
+  // 重构：Flex + Sticky 目录侧边栏
   // ─────────────────────────────────────────────────────────────────────────
 
   private _renderToc() {
     if (this._toc.length === 0) return nothing;
-
-    // Right-side position: align with the right edge of the content area
-    // We use right: calc((100vw - min(72rem, 100vw)) / 2 + 1rem)
-    // but simpler: just right:1.5rem for now, matches most layouts
-    const HEADER = 56;
-    // const topPx = HEADER + this._tocClipTop; // clip from top via padding
-    // const clipH = this._tocClipTop + this._tocClipBottom;
-    // visible height of TOC controlled by clipping container
-    // We don't shrink the panel itself, we translate it so the visible
-    // "window" always aligns to the top-right of the article
-    const translateY = -this._tocClipTop;
-
+    // 使用 position: sticky 配合内部 flex/overflow，无需 JS 计算裁剪高度
     return html`
-      <div class="nexus-toc-panel hidden lg:block"
-           style="
-             top: ${HEADER}px;
-             right: max(1.5rem, calc((100vw - 72rem) / 2));
-             height: calc(100vh - ${HEADER}px);
-             overflow: hidden;
-             opacity: ${this._tocVisible ? 1 : 0};
-             transition: opacity .25s ease;
-             pointer-events: ${this._tocVisible ? 'auto' : 'none'};
-           ">
-
-        <!-- Sliding inner panel -->
-        <div style="transform: translateY(${translateY}px); transition: transform .12s linear;">
-          <div class="nexus-toc-inner nexus-glass" style="max-height: calc(100vh - ${HEADER + 24}px);">
-
-            <!-- Header -->
-            <button @click="${() => (this._tocCollapsed = !this._tocCollapsed)}"
-                    class="w-full flex items-center justify-between px-4 py-3
-                           text-[.72rem] font-mono text-base-content/40
-                           hover:text-base-content/75 transition-colors">
-              <span class="flex items-center gap-1.5">
-                <iconify-icon icon="ph:list-bullets"></iconify-icon>
-                目录
-                <span class="opacity-50">(${this._toc.length})</span>
-              </span>
-              <iconify-icon icon="${this._tocCollapsed ? 'ph:caret-down' : 'ph:caret-up'}">
-              </iconify-icon>
-            </button>
-
-            ${this._tocCollapsed ? nothing : html`
-              <div class="border-t border-base-content/6 pb-2
-                          overflow-y-auto" style="max-height:70vh">
-                ${this._toc.map(item => html`
-                  <button @click="${() => this._scrollToId(item.id)}"
-                          class="nexus-toc-item level-${item.level}
-                                 ${this._activeTocId === item.id ? 'active' : ''}">
-                    ${item.text}
-                  </button>`)}
-              </div>`}
-          </div>
+      <aside class="hidden lg:block w-64 flex-shrink-0 sticky top-[72px]" style="max-height: calc(100vh - 120px);">
+        <div class="nexus-toc-inner nexus-glass h-full flex flex-col">
+          <button @click="${() => (this._tocCollapsed = !this._tocCollapsed)}"
+                  class="w-full flex items-center justify-between px-4 py-3
+                         text-[.72rem] font-mono text-base-content/40
+                         hover:text-base-content/75 transition-colors shrink-0">
+            <span class="flex items-center gap-1.5">
+              <iconify-icon icon="ph:list-bullets"></iconify-icon>
+              目录
+              <span class="opacity-50">(${this._toc.length})</span>
+            </span>
+            <iconify-icon icon="${this._tocCollapsed ? 'ph:caret-down' : 'ph:caret-up'}"></iconify-icon>
+          </button>
+          
+          ${this._tocCollapsed ? nothing : html`
+            <div class="border-t border-base-content/6 pb-2 overflow-y-auto flex-1 custom-scrollbar">
+              ${this._toc.map(item => html`
+                <button @click="${() => this._scrollToId(item.id)}"
+        class="nexus-toc-item level-${item.level}
+               ${this._activeTocId === item.id ? 'active' : ''}">
+  ${item.text}
+</button>`)}
+            </div>`}
         </div>
-      </div>`;
+      </aside>`;
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render: Article body + TOC (split zone)
-  // ─────────────────────────────────────────────────────────────────────────
-
-  private _renderArticleZone() {
-    return html`
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <!-- Right margin reserved for fixed TOC on lg screens -->
-        <div class="lg:mr-72">
-          <article class="nexus-article-body prose-nexus">
-            ${unsafeHTML(this._renderedHtml)}
-          </article>
-        </div>
-      </div>`;
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render: Attachments (full-width glass card)
-  // ─────────────────────────────────────────────────────────────────────────
 
   private _renderAttachments(files: ArticleFile[]) {
     if (!files.length) return nothing;
-
     const images = files.filter(f => f.previewType === "image");
     const audios = files.filter(f => f.previewType === "audio");
     const videos = files.filter(f => f.previewType === "video");
@@ -1115,14 +958,11 @@ export class ArticlePage extends DaisyUIElement {
     return html`
       <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
         <div class="nexus-glass rounded-2xl p-6">
-
           <div class="nexus-section-label">
             <iconify-icon icon="ph:paperclip"></iconify-icon>
             附件
             <span class="badge badge-xs badge-ghost font-normal">${files.length}</span>
           </div>
-
-          <!-- Image thumbnails -->
           ${images.length ? html`
             <div class="mb-6">
               <p class="text-[.72rem] text-base-content/35 font-mono mb-3 flex items-center gap-1">
@@ -1140,28 +980,17 @@ export class ArticlePage extends DaisyUIElement {
         document.body.style.overflow = 'hidden';
       }}">
                     <img src="${API.attachment("/" + f.previewType + f.clientFilePath)}" alt="${f.name}"
-                         class="w-full h-full object-cover transition-transform duration-300
-                                group-hover:scale-105"
+                         class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                          loading="lazy"/>
-                    <div class="absolute inset-0 bg-base-100/0 group-hover:bg-base-100/35
-                                transition-colors flex items-end">
-                      <p class="w-full px-2 py-1 text-[.65rem] truncate
-                                bg-base-100/75 backdrop-blur-sm text-base-content/65
+                    <div class="absolute inset-0 bg-base-100/0 group-hover:bg-base-100/35 transition-colors flex items-end">
+                      <p class="w-full px-2 py-1 text-[.65rem] truncate bg-base-100/75 backdrop-blur-sm text-base-content/65
                                 translate-y-full group-hover:translate-y-0 transition-transform">
                         ${f.name}
                       </p>
                     </div>
-                    <div class="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100
-                                transition-opacity">
-                      <span class="bg-base-100/80 backdrop-blur-sm rounded-full p-1 flex">
-                        <iconify-icon icon="ph:magnifying-glass-plus" class="text-sm"></iconify-icon>
-                      </span>
-                    </div>
                   </div>`)}
               </div>
             </div>` : nothing}
-
-          <!-- Audio -->
           ${audios.length ? html`
             <div class="mb-6 space-y-2">
               <p class="text-[.72rem] text-base-content/35 font-mono mb-3 flex items-center gap-1">
@@ -1169,8 +998,7 @@ export class ArticlePage extends DaisyUIElement {
               </p>
               ${audios.map(f => html`
                 <div class="nexus-attach-card">
-                  <div class="w-9 h-9 rounded-lg bg-primary/12 flex items-center
-                              justify-center text-primary flex-shrink-0">
+                  <div class="w-9 h-9 rounded-lg bg-primary/12 flex items-center justify-center text-primary flex-shrink-0">
                     <iconify-icon icon="ph:waveform"></iconify-icon>
                   </div>
                   <div class="flex-1 min-w-0">
@@ -1180,14 +1008,11 @@ export class ArticlePage extends DaisyUIElement {
                   <audio controls class="h-8" style="width:180px;min-width:0" preload="none"
                          src="${f.clientFilePath}"></audio>
                   <button @click="${() => this._downloadFile(f)}"
-                          class="btn btn-ghost btn-sm btn-circle text-base-content/40 hover:text-primary"
-                          title="下载">
+                          class="btn btn-ghost btn-sm btn-circle text-base-content/40 hover:text-primary">
                     <iconify-icon icon="ph:download-simple"></iconify-icon>
                   </button>
                 </div>`)}
             </div>` : nothing}
-
-          <!-- Other files (text / unsupported / video as download) -->
           ${(others.length + videos.length) ? html`
             <div class="space-y-2">
               <p class="text-[.72rem] text-base-content/35 font-mono mb-3 flex items-center gap-1">
@@ -1195,10 +1020,8 @@ export class ArticlePage extends DaisyUIElement {
               </p>
               ${[...videos, ...others].map(f => html`
                 <div class="nexus-attach-card">
-                  <div class="w-9 h-9 rounded-lg bg-base-200 flex items-center
-                              justify-center text-base-content/45 flex-shrink-0">
-                    <iconify-icon icon="${FILE_ICON[f.suffix] ?? 'ph:file'}" class="text-lg">
-                    </iconify-icon>
+                  <div class="w-9 h-9 rounded-lg bg-base-200 flex items-center justify-center text-base-content/45 flex-shrink-0">
+                    <iconify-icon icon="${FILE_ICON[f.suffix] ?? 'ph:file'}" class="text-lg"></iconify-icon>
                   </div>
                   <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-base-content truncate">${f.name}</p>
@@ -1207,246 +1030,141 @@ export class ArticlePage extends DaisyUIElement {
                     </p>
                   </div>
                   <button @click="${() => this._downloadFile(f)}"
-                          class="btn btn-ghost btn-sm btn-circle text-base-content/40
-                                 hover:text-primary flex-shrink-0" title="下载">
+                          class="btn btn-ghost btn-sm btn-circle text-base-content/40 hover:text-primary flex-shrink-0">
                     <iconify-icon icon="ph:download-simple"></iconify-icon>
                   </button>
                 </div>`)}
             </div>` : nothing}
-
         </div>
       </section>`;
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render: Actions — like / share (full-width)
-  // ─────────────────────────────────────────────────────────────────────────
 
   private _renderActions() {
     return html`
       <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
         <div class="nexus-glass rounded-2xl px-6 py-8 text-center">
-          <p class="text-base-content/40 text-sm italic mb-6"
-             style="font-family:'Noto Serif SC',serif;">
+          <p class="text-base-content/40 text-sm italic mb-6" style="font-family:'Noto Serif SC',serif;">
             如果这篇文章对你有帮助，欢迎分享给更多人 —— 这对我很重要 ✦
           </p>
           <div class="flex items-center justify-center gap-6">
-
-            <!-- Like -->
-            <button @click="${this._toggleLike}"
-                    class="flex flex-col items-center gap-1.5 group select-none">
-              <div class="w-12 h-12 rounded-full border-2 transition-all duration-200
-                          flex items-center justify-center text-xl
-                          ${this._liked
-        ? 'border-error bg-error/10 text-error'
-        : 'border-base-content/20 text-base-content/30 group-hover:border-error/50 group-hover:text-error/60'}
+            <button @click="${this._toggleLike}" class="flex flex-col items-center gap-1.5 group select-none">
+              <div class="w-12 h-12 rounded-full border-2 transition-all duration-200 flex items-center justify-center text-xl
+                          ${this._liked ? 'border-error bg-error/10 text-error' : 'border-base-content/20 text-base-content/30 group-hover:border-error/50 group-hover:text-error/60'}
                           ${this._likeAnimating ? 'nexus-liked-beat' : ''}">
                 <iconify-icon icon="${this._liked ? 'ph:heart-fill' : 'ph:heart'}"></iconify-icon>
               </div>
               <span class="text-xs font-mono text-base-content/40">${this._likeCount}</span>
             </button>
-
-            <!-- Share -->
-            <button @click="${this._share}"
-                    class="flex flex-col items-center gap-1.5 group select-none">
-              <div class="w-12 h-12 rounded-full border-2 border-base-content/20
-                          text-base-content/30 group-hover:border-primary/50
-                          group-hover:text-primary/60 transition-all duration-200
-                          flex items-center justify-center text-xl">
+            <button @click="${this._share}" class="flex flex-col items-center gap-1.5 group select-none">
+              <div class="w-12 h-12 rounded-full border-2 border-base-content/20 text-base-content/30 group-hover:border-primary/50 group-hover:text-primary/60 transition-all duration-200 flex items-center justify-center text-xl">
                 <iconify-icon icon="ph:share-network"></iconify-icon>
               </div>
               <span class="text-xs font-mono text-base-content/40">分享</span>
             </button>
-
           </div>
         </div>
       </section>`;
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render: Adjacent + Recommended (full-width)
-  // ─────────────────────────────────────────────────────────────────────────
 
   private _renderNavigation(adj: AdjacentResponse, recs: RecommendedArticle[]) {
     return html`
       <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
         <div class="nexus-glass rounded-2xl p-6">
-
-          <!-- Prev / Next -->
-          <div class="nexus-section-label">
-            <iconify-icon icon="ph:arrows-left-right"></iconify-icon>
-            前后篇
-          </div>
+          <div class="nexus-section-label"><iconify-icon icon="ph:arrows-left-right"></iconify-icon> 前后篇</div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-
-            <!-- Prev -->
             ${adj.prev
         ? html`<a href="/pages/article?article=${adj.prev.id}" class="nexus-nav-card">
-                  <span class="text-[.7rem] font-mono text-base-content/30 flex items-center gap-1">
-                    <iconify-icon icon="ph:arrow-left"></iconify-icon> 上一篇
-                  </span>
-                  <span class="text-sm font-medium text-base-content/80 line-clamp-2
-                               group-hover:text-primary transition-colors">
-                    ${adj.prev.title}
-                  </span>
-                  <span class="text-[.7rem] text-base-content/30 font-mono">
-                    ${formatDate(adj.prev.createdAt)}
-                  </span>
+                  <span class="text-[.7rem] font-mono text-base-content/30 flex items-center gap-1"><iconify-icon icon="ph:arrow-left"></iconify-icon> 上一篇</span>
+                  <span class="text-sm font-medium text-base-content/80 line-clamp-2 group-hover:text-primary transition-colors">${adj.prev.title}</span>
+                  <span class="text-[.7rem] text-base-content/30 font-mono">${formatDate(adj.prev.createdAt)}</span>
                 </a>`
         : html`<div class="nexus-nav-card opacity-40 cursor-default">
-                  <span class="text-[.7rem] font-mono text-base-content/30 flex items-center gap-1">
-                    <iconify-icon icon="ph:arrow-left"></iconify-icon> 上一篇
-                  </span>
+                  <span class="text-[.7rem] font-mono text-base-content/30 flex items-center gap-1"><iconify-icon icon="ph:arrow-left"></iconify-icon> 上一篇</span>
                   <span class="text-sm text-base-content/40 italic">已是第一篇</span>
                 </div>`}
-
-            <!-- Next -->
             ${adj.next
         ? html`<a href="/pages/article?article=${adj.next.id}" class="nexus-nav-card sm:items-end">
-                  <span class="text-[.7rem] font-mono text-base-content/30 flex items-center gap-1 sm:justify-end">
-                    下一篇 <iconify-icon icon="ph:arrow-right"></iconify-icon>
-                  </span>
-                  <span class="text-sm font-medium text-base-content/80 line-clamp-2
-                               sm:text-right group-hover:text-primary transition-colors">
-                    ${adj.next.title}
-                  </span>
-                  <span class="text-[.7rem] text-base-content/30 font-mono sm:text-right">
-                    ${formatDate(adj.next.createdAt)}
-                  </span>
+                  <span class="text-[.7rem] font-mono text-base-content/30 flex items-center gap-1 sm:justify-end">下一篇 <iconify-icon icon="ph:arrow-right"></iconify-icon></span>
+                  <span class="text-sm font-medium text-base-content/80 line-clamp-2 sm:text-right group-hover:text-primary transition-colors">${adj.next.title}</span>
+                  <span class="text-[.7rem] text-base-content/30 font-mono sm:text-right">${formatDate(adj.next.createdAt)}</span>
                 </a>`
         : html`<div class="nexus-nav-card sm:items-end opacity-40 cursor-default">
-                  <span class="text-[.7rem] font-mono text-base-content/30 flex items-center gap-1 sm:justify-end">
-                    下一篇 <iconify-icon icon="ph:arrow-right"></iconify-icon>
-                  </span>
+                  <span class="text-[.7rem] font-mono text-base-content/30 flex items-center gap-1 sm:justify-end">下一篇 <iconify-icon icon="ph:arrow-right"></iconify-icon></span>
                   <span class="text-sm text-base-content/40 italic sm:text-right">已是最新篇</span>
                 </div>`}
           </div>
-
-          <!-- Recommended -->
           ${recs.length ? html`
-            <div class="nexus-section-label">
-              <iconify-icon icon="ph:sparkle"></iconify-icon>
-              你可能也喜欢
-            </div>
+            <div class="nexus-section-label"><iconify-icon icon="ph:sparkle"></iconify-icon> 你可能也喜欢</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               ${recs.map(r => html`
                 <a href="/pages/article?article=${r.id}" class="nexus-nav-card group">
-                  <h4 class="text-sm font-semibold text-base-content/80 line-clamp-2
-                             group-hover:text-primary transition-colors">
-                    ${r.title}
-                  </h4>
-                  <p class="text-[.78rem] text-base-content/45 line-clamp-2 leading-relaxed">
-                    ${r.description}
-                  </p>
+                  <h4 class="text-sm font-semibold text-base-content/80 line-clamp-2 group-hover:text-primary transition-colors">${r.title}</h4>
+                  <p class="text-[.78rem] text-base-content/45 line-clamp-2 leading-relaxed">${r.description}</p>
                   <div class="flex items-center gap-3 mt-1 text-[.7rem] font-mono text-base-content/30">
-                    <span>${formatDate(r.createdAt)}</span>
-                    <span>·</span>
-                    <span>${readingTime(r.wordCount)} min</span>
-                    ${JSON.parse(r.tags)[0]
-            ? html`<span class="ml-auto badge badge-outline badge-xs">#${JSON.parse(r.tags)[0].name}</span>`
-            : nothing}
+                    <span>${formatDate(r.createdAt)}</span><span>·</span><span>${readingTime(r.wordCount)} min</span>
+                    ${JSON.parse(r.tags)[0] ? html`<span class="ml-auto badge badge-outline badge-xs">#${JSON.parse(r.tags)[0].name}</span>` : nothing}
                   </div>
                 </a>`)}
             </div>` : nothing}
-
         </div>
       </section>`;
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render: Comment placeholder (full-width)
-  // ─────────────────────────────────────────────────────────────────────────
-
-  private _renderComments() {
-    return html`
-      <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-6" id="comments">
-        <!-- 评论区 reserved -->
-      </section>`;
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render: Lightbox
-  // ─────────────────────────────────────────────────────────────────────────
-
   private _renderLightbox() {
     if (!this._lightboxOpen) return nothing;
     return html`
-      <div class="nexus-lightbox-overlay"
-           @click="${this._closeLightbox}"
-           @keydown="${(e: KeyboardEvent) => e.key === 'Escape' && this._closeLightbox()}">
-        <img class="nexus-lightbox-img"
-             src="${this._lightboxSrc}"
-             alt="${this._lightboxAlt}"
-             @click="${(e: Event) => e.stopPropagation()}"/>
-        ${this._lightboxAlt
-        ? html`<p class="nexus-lightbox-caption">${this._lightboxAlt}</p>` : nothing}
-        <button class="nexus-lightbox-close" @click="${this._closeLightbox}" title="关闭">
-          <iconify-icon icon="ph:x"></iconify-icon>
-        </button>
+      <div class="nexus-lightbox-overlay" @click="${this._closeLightbox}" @keydown="${(e: KeyboardEvent) => e.key === 'Escape' && this._closeLightbox()}">
+        <img class="nexus-lightbox-img" src="${this._lightboxSrc}" alt="${this._lightboxAlt}" @click="${(e: Event) => e.stopPropagation()}"/>
+        ${this._lightboxAlt ? html`<p class="nexus-lightbox-caption">${this._lightboxAlt}</p>` : nothing}
+        <button class="nexus-lightbox-close" @click="${this._closeLightbox}" title="关闭"><iconify-icon icon="ph:x"></iconify-icon></button>
       </div>`;
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Main render
-  // ─────────────────────────────────────────────────────────────────────────
 
   render() {
     const bg_image = { "background-image": this._isDark ? `url('/../../../public/Image_00_02_00.png')` : `url('/../../../public/Image_m8xtbtm8xtbtm8xt.png')` }
     return html`
-      <!-- Progress bar -->
       <div class="nexus-reading-progress" style="width:${this._readingProgress}%"></div>
-
-      <div style="
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        ${styleMap(bg_image)}
-        background-repeat: no-repeat;
-        background-size: cover;
-        background-position: center;
-        z-index: -1; /* 确保在内容后面 */
-      "></div>
+      <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; ${styleMap(bg_image)}
+                  background-repeat: no-repeat; background-size: cover; background-position: center; z-index: -1;"></div>
 
       ${this._renderNavbar()}
 
       <main class="min-h-screen">
-
         ${this._loading
         ? this._renderSkeleton()
         : this._error
           ? html`
               <div class="max-w-2xl mx-auto px-4 py-24 text-center">
-                <iconify-icon icon="ph:warning-circle"
-                              class="text-5xl text-error/50 mb-4"></iconify-icon>
+                <iconify-icon icon="ph:warning-circle" class="text-5xl text-error/50 mb-4"></iconify-icon>
                 <p class="text-base-content/50 text-sm">${this._error}</p>
               </div>`
           : this._article
             ? html`
               ${this._renderArticleHeader(this._article)}
-              ${this._renderArticleZone()}
-              ${this._renderToc()}
+              
+              <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex gap-8 relative items-start">
+                
+                <div class="flex-1 min-w-0">
+                  <article class="nexus-article-body prose-nexus">
+                    ${unsafeHTML(this._renderedHtml)}
+                  </article>
+                </div>
+                
+                ${this._renderToc()}
+                
+              </div>
+
               ${this._renderAttachments(this._article.files)}
               ${this._renderActions()}
-              ${this._adjacent
-                ? this._renderNavigation(this._adjacent, this._recommended)
-                : nothing}
-              ${this._renderComments()}
+              ${this._adjacent ? this._renderNavigation(this._adjacent, this._recommended) : nothing}
+              <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-6" id="comments"></section>
             `
             : nothing}
-
       </main>
 
       ${this._renderFooter()}
-
-      <!-- Lightbox -->
       ${this._renderLightbox()}
-
-      <!-- Toast -->
-      ${this._toastMsg
-        ? html`<div class="nexus-toast">${this._toastMsg}</div>`
-        : nothing}
+      ${this._toastMsg ? html`<div class="nexus-toast">${this._toastMsg}</div>` : nothing}
     `;
   }
 }
